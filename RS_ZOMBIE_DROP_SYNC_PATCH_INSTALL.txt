@@ -1,0 +1,49 @@
+RealitySucksRP QB Inventory Zombie UI v2.6.1 Drop/Inventory Sync Patch
+===============================================================================
+
+THIS IS A CHANGED-FILES-ONLY PATCH.
+Merge the included qb-inventory folder into the matching zombie/APCode
+qb-inventory resource supplied as qb-inventory2.zip.
+
+Do not install this patch over the separate Punk UI qb-inventory variant.
+Do not replace the full resource with only this patch folder.
+
+Changed files
+-------------
+fxmanifest.lua
+client/main.lua
+client/drops.lua
+server/main.lua
+server/functions.lua
+server/commands.lua
+html/app.js
+CHANGELOG_RS_ZOMBIE_v2.6.1.md
+
+Installation
+------------
+1. Stop the FiveM server.
+2. Back up the current qb-inventory resource.
+3. Open the patch's qb-inventory folder.
+4. Copy its contents into the matching qb-inventory resource and allow the
+   changed files to overwrite their existing versions.
+5. Keep the resource folder name exactly: qb-inventory
+6. Perform a full server restart and reconnect the test clients.
+
+No SQL import is required.
+
+Recommended runtime test
+------------------------
+1. Record exact totals for physical cash, marked bills/black money, one normal
+   stackable item, one unique item, and one weapon.
+2. Drop one item, a partial stack, and a full stack using the zombie drop
+   confirmation dialog.
+3. Confirm the player panel decreases once and the Drop panel contains exactly
+   the amount dropped.
+4. Immediately move, merge, split, and swap items between both panels.
+5. Confirm a removed source item cannot reappear or merge as a ghost.
+6. Pick everything back up, close inventory, reopen it, and verify the totals
+   exactly match the starting totals.
+7. Repeat with two connected players and verify both clients see the same bag
+   contents.
+8. Give an item to a nearby player while their inventory is open and confirm
+   the recipient panel refreshes without a script error.

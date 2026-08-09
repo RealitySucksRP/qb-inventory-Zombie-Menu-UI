@@ -1,0 +1,29 @@
+RealitySucksRP QB Inventory Zombie UI v2.6.1 — Static Validation
+================================================================
+
+[PASS] Compared against the supplied qb-inventory2.zip variant.
+[PASS] Active manifest version: 2.6.1-rs-zombie-drop-sync
+[PASS] Active NUI remains html/index.html -> html/app.js.
+[PASS] JavaScript syntax: node --check html/app.js
+[PASS] JavaScript harness: confirmed authoritative floor-drop response replaces both panels.
+[PASS] JavaScript harness: confirmed rejected/ghost move is restored from server snapshot.
+[PASS] Lua syntax: client/main.lua after replacing FiveM backtick hash literals.
+[PASS] Lua syntax: client/drops.lua after replacing FiveM backtick hash literals.
+[PASS] Lua syntax: server/main.lua after replacing FiveM backtick hash literals.
+[PASS] Lua syntax: server/functions.lua after replacing FiveM backtick hash literals.
+[PASS] Lua syntax: server/commands.lua after replacing FiveM backtick hash literals.
+[PASS] Drop confirmation dialog preserved and now sends operation IDs.
+[PASS] Drop NUI callback returns before network entity placement waits.
+[PASS] Drop request locking and idempotency cache present.
+[PASS] Failed bag creation/networking has server-side refund paths.
+[PASS] SetInventoryData returns authoritative player/other inventory snapshots.
+[PASS] AddItem/RemoveItem and command refresh paths send authoritative item tables.
+[PASS] Recipient give-item refresh references the valid Target player object.
+[PASS] Zombie cash-as-item, HUD bridge, expiry logic, AP backend, and rs-incidentlink behavior preserved.
+[PASS] No SQL, config, CSS, image, item-definition, or layout changes.
+
+Runtime limitation
+------------------
+A live FiveM/OneSync/QBCore server was not available in this environment.
+Final confirmation still requires the included in-game cash, black-money,
+weapon, partial-stack, merge/swap, close/reopen, give-item, and two-client tests.

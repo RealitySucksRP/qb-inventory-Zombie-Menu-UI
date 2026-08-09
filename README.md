@@ -1,161 +1,14 @@
-<p align="center">
-  <img src="docs/zombiemenu1.png" alt="RealitySucksRP Zombie Inventory Menu Screenshot 1" width="49%" />
-  <img src="docs/zombie2.png" alt="RealitySucksRP Zombie Inventory Menu Screenshot 2" width="49%" />
-</p>
-# RealitySucksRP Zombie Inventory - Open Source
+## \[QB INVENTORY REWORK] a modern, feature-rich, and optimized inventory system for the QBCore Framework.
 
-This is the open-source Zombie UI version of QB Inventory Rework for QBCore servers.
 
-This package is meant to be delivered as a normal Tebex file download. It is not an escrow package and does not use `/assetpacks`.
 
-All Lua, HTML, CSS, JavaScript, config files, item images, and Zombie UI artwork are editable.
+## Description
 
-## Tebex Delivery Note
-
-Use this resource as a normal downloadable ZIP product.
-
-Do not advertise it as Cfx Granted or escrow protected. This release is open source, so buyers receive the editable files directly.
-
-Install folder name:
-
-```text
-qb-inventory
-```
-
-Start order example:
-
-```cfg
-ensure qb-core
-ensure qb-weapons
-ensure oxmysql
-ensure qb-inventory
-```
-
-## HUD Money Sync
-
-This inventory includes cash-as-item support. That means the cash item inside the inventory can match the money shown on the player's HUD.
-
-The HUD config included with this resource is only an example. This inventory does **not** require `rs-lilhudlife`.
-
-Server owners must replace the example HUD resource name and event with the HUD they actually use on their server.
-
-Open:
-
-```text
-config/config.lua
-```
-
-Find:
-
-```lua
-CustomHUD = {
-    Enabled = false,
-    ResourceName = 'your-hud-resource',
-    ExportName = 'SetHUDLifeVisible',
-    MoneySyncEvents = {}
-}
-```
-
-Leave `Enabled = false` if you do not want this inventory to send money updates to a custom HUD.
-
-Set `Enabled = true` only if you want this inventory to notify your HUD when the player's cash amount changes.
-
-Example:
-
-```lua
-CustomHUD = {
-    Enabled = true,
-    ResourceName = 'my-hud',
-    ExportName = nil,
-    MoneySyncEvents = {
-        'my-hud:client:updateCash'
-    }
-}
-```
-
-Your HUD must have an event that accepts the new cash amount.
-
-Example HUD-side code:
-
-```lua
-RegisterNetEvent('my-hud:client:updateCash', function(cashAmount)
-    -- Update your HUD cash display here.
-    -- cashAmount is the player's current cash amount.
-end)
-```
-
-If your HUD already has its own money update event, add that event name inside `MoneySyncEvents`.
-
-Example:
-
-```lua
-MoneySyncEvents = {
-    'hud:client:UpdateMoney',
-    'myhud:client:setCash'
-}
-```
-
-Do not leave the example HUD name in place unless that is the HUD you actually use.
-
-`rs-lilhudlife` is only an example from the RealitySucksRP test server. Replace it with your own HUD resource name, export, or event.
-
-### Quick HUD Setup
-
-1. Open `config/config.lua`.
-2. Find `CustomHUD`.
-3. Change `ResourceName` to your HUD resource name.
-4. Add your HUD cash update event inside `MoneySyncEvents`.
-5. Set `Enabled = true`.
-6. Restart `qb-inventory`.
-7. Buy, drop, deposit, or receive cash and confirm the HUD amount matches the inventory cash item.
-
-### Important
-
-If your HUD does not update after setup, check your HUD documentation for the correct client event or export used to update cash/money display.
-
-This resource cannot automatically know every custom HUD event name. The server owner must enter the correct HUD event or export for their own HUD.
-
----
-
-## Tebex / Server Owner Notes
-
-This is the open-source Zombie UI version. It is not escrowed and it does not use `/assetpacks`.
-
-The HUD settings in `config/config.lua` are examples only. This resource may show `rs-lilhudlife` in comments because that is the RealitySucksRP test HUD, but buyers are expected to replace it with their own HUD resource name, their own export, or leave the option disabled.
-
-Cash display works like this:
-
-- `qb-inventory` always sends the current cash item total with this client event:
-
-```lua
-RegisterNetEvent('qb-inventory:client:updateCash', function(cashAmount)
-    -- Update your HUD cash display here
-end)
-```
-
-- Server owners can also add their own HUD event name in `Config.CustomHUD.MoneySyncEvents`.
-- If `Config.CashAsItem = true`, the `cash` item count is the real cash balance. The HUD must display the cash item count, not an old cached QBCore money value.
-- If a server does not use cash-as-item, set `Config.CashAsItem = false` and keep normal QBCore money behavior.
-
-Example custom HUD setup in `config/config.lua`:
-
-```lua
-CustomHUD = {
-    Enabled = false, -- only turn this on if your HUD has a hide/show export
-    ResourceName = 'your-hud-resource',
-    ExportName = 'SetHUDVisible',
-    MoneySyncEvents = {
-        'yourhud:client:updateCash'
-    }
-}
-```
-
-`rs-lilhudlife` is not required. It is only an example from the RealitySucksRP server.
+QB Inventory Rework Zombie is a complete replacement for the default QBCore inventory, designed to provide a more immersive and functional experience for players. Oh yea and I also made the menu UI customizable. 
 
 \---
 
-
-##   Core Features
+## ® Core Features
 
 * Cash as an item
 * New give system
@@ -170,7 +23,7 @@ CustomHUD = {
 
 
 
-##   Dependencies
+## ¶ Dependencies
 
 Ensure you have the following resources installed and running before installing qb-Inventory rework :
 
@@ -178,7 +31,7 @@ Ensure you have the following resources installed and running before installing 
 
 \---
 
-##    Installation
+## ∏è Installation
 
 Follow these steps **very carefully** to ensure a smooth installation. Hit me up on discord if you cant do this. 
 
@@ -1290,8 +1143,8 @@ This build uses the new `qb-inventory-rework-main` backend/client/server flow, w
 - `QBCore:Player:UpdatePlayerDataField` sync listener
 - legacy zombie UI callbacks for `GiveItem` and `DropItem`
 - decay/time tooltip support in the zombie `html/app.js`
-- cash-as-item support is present and controlled by `Config.CashAsItem`
-- generic HUD hook is included; `rs-lilhudlife` is only an example, not a dependency
+- cash-as-item support is present but disabled by default until qb-core is patched
+- zombie HUD hook points to `rs-hudlifev4`
 
 ## Important install note
 
@@ -1305,7 +1158,7 @@ The NUI callbacks post to `https://qb-inventory/...`, so do not run it live as `
 
 ## Cash-as-item
 
-`Config.CashAsItem` is set in `config/config.lua`. The current Tebex/open-source package ships with `Config.CashAsItem = true` because this build is intended for cash-as-item servers. Set it to `false` if your server wants normal QBCore cash instead.
+`Config.CashAsItem` is set to `false` by default in this package.
 
 Turn it on only after:
 
@@ -1313,38 +1166,14 @@ Turn it on only after:
 2. `qb-core/shared/items.lua` has a `cash` item.
 3. The HUD listens to `qb-inventory:client:updateCash` or QBCore money set/add/remove events correctly.
 
-## HUD / Money Display Setup
+## Zombie HUD
 
-`Config.CustomHUD` is generic. It is not locked to RealitySucksRP.
-
-`rs-lilhudlife` is only an example HUD name from William's server. Server owners should replace it with their own HUD resource, or leave `Config.CustomHUD.Enabled = false`.
-
-For cash matching, your HUD should listen to:
+`Config.CustomHUD` is ready for:
 
 ```lua
-RegisterNetEvent('qb-inventory:client:updateCash', function(cashAmount)
-    -- Set your HUD cash display to cashAmount
-end)
+ResourceName = 'rs-hudlifev4'
+ExportName = 'SetHUDLifeVisible'
 ```
 
-If your HUD already uses a different event name, add it in:
+Make sure `rs-hudlifev4` has this export before depending on the hide/show behavior.
 
-```lua
-Config.CustomHUD.MoneySyncEvents = {
-    'yourhud:client:updateCash'
-}
-```
-
-For cash-as-item servers, the HUD should display the `cash` item amount. If your HUD keeps showing an old QBCore cash value, update the HUD to use the event above.
-
-
-
----
-
-## Support RealitySucksRP
-
-If this resource helped your server, you can support future free and open-source RealitySucksRP releases here:
-
-[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/realitysucksrp)
-
-Thank you for supporting RealitySucksRP.

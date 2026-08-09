@@ -22,29 +22,15 @@ local hotbarShown = false
 local isBlurEnabled = true
 local lastSlotUse = {}
 local SLOT_USE_DEBOUNCE_MS = 450
+local pendingInventoryOperations = {}
+local inventoryOperationCounter = 0
 
 
-local function SyncCashItemToHUD(items)
-    local cashAmount = 0
-    local foundCashItem = false
-
-    if type(items) == 'table' then
-        for _, item in pairs(items) do
-            if item and item.name == 'cash' then
-                foundCashItem = true
-                cashAmount = cashAmount + (tonumber(item.amount) or tonumber(item.count) or 0)
-            end
-        end
+local function RequestAuthoritativeCashState()
+    if Config.CashAsItem then
+        TriggerServerEvent('qb-inventory:server:requestCashState')
     end
-
-    -- Safety fallback: if cash-as-item is not present yet, do not leave HUD stuck on an old number.
-    if not foundCashItem and PlayerData and PlayerData.money and PlayerData.money.cash then
-        cashAmount = tonumber(PlayerData.money.cash) or 0
-    end
-
-    TriggerEvent('qb-inventory:client:updateCash', cashAmount)
 end
-
 local function ToggleHUD(show)
     if not Config.CustomHUD or not Config.CustomHUD.Enabled then return end
 
@@ -69,14 +55,17 @@ RegisterNetEvent('QBCore:Client:OnPlayerLoaded', function()
     LocalPlayer.state:set('inv_busy', false, true)
     PlayerData = QBCore.Functions.GetPlayerData()
     GetDrops()
-    if PlayerData and PlayerData.items then
-        SyncCashItemToHUD(PlayerData.items)
-    end
+    RequestAuthoritativeCashState()
 end)
 
 RegisterNetEvent('QBCore:Client:OnPlayerUnload', function()
     LocalPlayer.state:set('inv_busy', true, true)
     PlayerData = nil
+
+    for requestId, finish in pairs(pendingInventoryOperations) do
+        pendingInventoryOperations[requestId] = nil
+        finish(false)
+    end
 end)
 
 RegisterNetEvent('QBCore:Client:UpdateObject', function()
@@ -85,9 +74,6 @@ end)
 
 RegisterNetEvent('QBCore:Player:SetPlayerData', function(val)
     PlayerData = val
-    if PlayerData and PlayerData.items then
-        SyncCashItemToHUD(PlayerData.items)
-    end
 end)
 RegisterNetEvent('QBCore:Player:UpdatePlayerDataField', function(key, val)
     if not PlayerData then
@@ -96,18 +82,6 @@ RegisterNetEvent('QBCore:Player:UpdatePlayerDataField', function(key, val)
 
     if key and val ~= nil then
         PlayerData[key] = val
-        if key == 'items' or key == 'money' then
-            SyncCashItemToHUD(PlayerData.items or {})
-        end
-    end
-end)
-
--- Some HUDs/resources listen to QBCore money changes instead of item changes.
--- This keeps the cash display from getting stuck when money is updated by another resource.
-RegisterNetEvent('hud:client:OnMoneyChange', function(moneyType)
-    if moneyType == 'cash' then
-        PlayerData = QBCore.Functions.GetPlayerData()
-        SyncCashItemToHUD(PlayerData.items or {})
     end
 end)
 
@@ -115,9 +89,7 @@ end)
 AddEventHandler('onResourceStart', function(resourceName)
     if resourceName == GetCurrentResourceName() then
         PlayerData = QBCore.Functions.GetPlayerData()
-        if PlayerData and PlayerData.items then
-            SyncCashItemToHUD(PlayerData.items)
-        end
+        RequestAuthoritativeCashState()
     end
 end)
 
@@ -275,20 +247,30 @@ local function ExtractAttachmentEntries(info)
     return entries
 end
 
+local function CollectPossibleKeys(attachmentData)
+    -- Built one by one so nil fields cannot create holes that stop ipairs early.
+    local possibleKeys = {}
+    local function add(value)
+        if type(value) == 'string' and value ~= '' then
+            possibleKeys[#possibleKeys + 1] = value
+        end
+    end
+    add(attachmentData.attachment)
+    add(attachmentData.item)
+    add(attachmentData.itemName)
+    add(attachmentData.name)
+    add(attachmentData.type)
+    add(attachmentData._key)
+    return possibleKeys
+end
+
 local function ResolveAttachmentKey(attachmentData, weaponName, WeaponAttachments)
     if type(attachmentData) ~= 'table' or type(WeaponAttachments) ~= 'table' then return nil, nil end
 
-    local possibleKeys = {
-        attachmentData.attachment,
-        attachmentData.item,
-        attachmentData.itemName,
-        attachmentData.name,
-        attachmentData.type,
-        attachmentData._key,
-    }
+    local possibleKeys = CollectPossibleKeys(attachmentData)
 
     for _, possibleKey in ipairs(possibleKeys) do
-        if type(possibleKey) == 'string' and WeaponAttachments[possibleKey] then
+        if WeaponAttachments[possibleKey] then
             local configuredComponent = GetConfiguredComponent(WeaponAttachments[possibleKey], weaponName)
             if configuredComponent then
                 return possibleKey, configuredComponent
@@ -324,16 +306,29 @@ local function ResolveAttachmentKey(attachmentData, weaponName, WeaponAttachment
     return nil, component
 end
 
-local function AddAttachmentResult(results, seen, attachmentKey, component, fallbackLabel)
+local function AddAttachmentResult(results, seen, attachmentKey, component, fallbackLabel, fallbackImage)
     if not attachmentKey or seen[attachmentKey] then return end
 
+    -- Alias keys (silencer/weapon_suppressor/etc) share one component; show it once.
+    local componentHash = ComponentToHash(component)
+    if componentHash and seen['component:' .. componentHash] then return end
+
     local itemInfo = QBCore.Shared.Items[attachmentKey]
+    local image = (itemInfo and itemInfo.image) or fallbackImage
+    if type(image) == 'string' and image ~= '' then
+        if not image:find('%.') then image = image .. '.png' end
+    else
+        image = attachmentKey .. '.png'
+    end
+
     results[#results + 1] = {
         attachment = attachmentKey,
         label = (itemInfo and itemInfo.label) or fallbackLabel or attachmentKey,
         component = component,
+        image = image,
     }
     seen[attachmentKey] = true
+    if componentHash then seen['component:' .. componentHash] = true end
 end
 
 local function AddPedInstalledAttachments(results, seen, itemdata, WeaponAttachments)
@@ -347,10 +342,14 @@ local function AddPedInstalledAttachments(results, seen, itemdata, WeaponAttachm
     if not HasPedGotWeapon(ped, weaponHash, false) then return end
 
     for attachmentType, weapons in pairs(WeaponAttachments) do
-        local component = GetConfiguredComponent(weapons, itemdata.name)
-        local componentHash = ComponentToHash(component)
-        if componentHash and HasPedGotWeaponComponent(ped, weaponHash, componentHash) then
-            AddAttachmentResult(results, seen, attachmentType, component)
+        -- Stock parts (default clips) count as installed components on every weapon;
+        -- only report keys that are real inventory items so removal can return them.
+        if not attachmentType:find('defaultclip') and QBCore.Shared.Items[attachmentType] then
+            local component = GetConfiguredComponent(weapons, itemdata.name)
+            local componentHash = ComponentToHash(component)
+            if componentHash and HasPedGotWeaponComponent(ped, weaponHash, componentHash) then
+                AddAttachmentResult(results, seen, attachmentType, component)
+            end
         end
     end
 end
@@ -369,16 +368,36 @@ local function FormatWeaponAttachments(itemdata)
     for _, attachmentData in pairs(attachmentEntries) do
         local attachmentKey, component = ResolveAttachmentKey(attachmentData, itemdata.name, WeaponAttachments)
         if attachmentKey then
-            AddAttachmentResult(attachments, seen, attachmentKey, component, attachmentData.label)
-        elseif Config and Config.Debug then
-            print(('[qb-inventory] Attachment metadata was found on %s but could not be matched: %s'):format(tostring(itemdata.name), json.encode(attachmentData)))
+            AddAttachmentResult(attachments, seen, attachmentKey, component, attachmentData.label, attachmentData.image)
+        else
+            -- Read shop metadata as it comes (rs-weaponshops prebuilt builds save
+            -- item/attachment/label/component directly on the weapon). If the entry
+            -- names a real shared item, show it even without a qb-weapons mapping.
+            local directKey
+            for _, candidate in ipairs(CollectPossibleKeys(attachmentData)) do
+                if QBCore.Shared.Items[candidate] then
+                    directKey = candidate
+                    break
+                end
+            end
+
+            if directKey then
+                local directComponent = component or attachmentData.component or attachmentData.hash or attachmentData.componentHash
+                AddAttachmentResult(attachments, seen, directKey, directComponent, attachmentData.label, attachmentData.image)
+            elseif Config and Config.Debug then
+                print(('[qb-inventory] Attachment metadata was found on %s but could not be matched: %s'):format(tostring(itemdata.name), json.encode(attachmentData)))
+            end
         end
     end
 
     -- Fallback: if a custom/prebuilt weapon shop applied components to the ped but did
     -- not save them under info.attachments, still show what is actually installed on
-    -- the currently held weapon.
-    AddPedInstalledAttachments(attachments, seen, itemdata, WeaponAttachments)
+    -- the currently held weapon. Only used when metadata gave us nothing - metadata is
+    -- the source of truth, and the ped scan would otherwise report stock parts like
+    -- the default clip (CLIP_01) that GTA counts as an installed component.
+    if #attachments == 0 then
+        AddPedInstalledAttachments(attachments, seen, itemdata, WeaponAttachments)
+    end
 
     return attachments
 end
@@ -459,19 +478,45 @@ RegisterNetEvent('qb-inventory:client:closeInv', function()
     })
 end)
 
-RegisterNetEvent('qb-inventory:client:updateInventory', function()
-    local items = {}
-    if PlayerData and type(PlayerData.items) == "table" then
-        items = PlayerData.items
+local function PushAuthoritativeInventory(items)
+    items = type(items) == 'table' and items or {}
+
+    if not PlayerData then
+        PlayerData = QBCore.Functions.GetPlayerData() or {}
     end
+    PlayerData.items = items
 
 
-    SyncCashItemToHUD(items)
 
     SendNUIMessage({
         action = 'update',
         inventory = items
     })
+end
+
+RegisterNetEvent('qb-inventory:client:updateInventory', function(authoritativeItems)
+    if type(authoritativeItems) == 'table' then
+        PushAuthoritativeInventory(authoritativeItems)
+        return
+    end
+
+    -- Compatibility for older/external callers that still trigger this event
+    -- without an item table. Ask the server instead of reading stale client cache.
+    QBCore.Functions.TriggerCallback(
+        'qb-inventory:server:getInventorySnapshot',
+        function(snapshot)
+            PushAuthoritativeInventory(snapshot and snapshot.playerInventory or {})
+        end,
+        nil
+    )
+end)
+
+RegisterNetEvent('qb-inventory:client:inventoryOperationResult', function(requestId, snapshot)
+    local finish = pendingInventoryOperations[requestId]
+    if not finish then return end
+
+    pendingInventoryOperations[requestId] = nil
+    finish(snapshot or false)
 end)
 
 RegisterNetEvent('qb-inventory:client:ItemBox', function(itemData, type, amount)
@@ -566,8 +611,60 @@ RegisterNUICallback('UseItem', function(data, cb)
 end)
 
 RegisterNUICallback('SetInventoryData', function(data, cb)
-    TriggerServerEvent('qb-inventory:server:SetInventoryData', data.fromInventory, data.toInventory, data.fromSlot, data.toSlot, data.fromAmount, data.toAmount)
-    cb('ok')
+    inventoryOperationCounter = inventoryOperationCounter + 1
+    local requestId = ('move:%s:%s:%s'):format(
+        GetPlayerServerId(PlayerId()),
+        GetGameTimer(),
+        inventoryOperationCounter
+    )
+
+    local otherInventoryName
+    if type(data.fromInventory) == 'string' and data.fromInventory ~= 'player' then
+        otherInventoryName = data.fromInventory
+    end
+    if type(data.toInventory) == 'string' and data.toInventory ~= 'player' then
+        otherInventoryName = data.toInventory
+    end
+
+    local finished = false
+    local function finish(result)
+        if finished then return end
+        finished = true
+        pendingInventoryOperations[requestId] = nil
+        cb(result or false)
+    end
+
+    pendingInventoryOperations[requestId] = finish
+
+    TriggerServerEvent(
+        'qb-inventory:server:SetInventoryData',
+        data.fromInventory,
+        data.toInventory,
+        data.fromSlot,
+        data.toSlot,
+        data.fromAmount,
+        data.toAmount,
+        requestId
+    )
+
+    -- Never leave the browser waiting forever. If the event reply is delayed,
+    -- ask the server for a fresh authoritative snapshot instead of trusting
+    -- the optimistic browser state.
+    SetTimeout(3000, function()
+        if not pendingInventoryOperations[requestId] then return end
+
+        QBCore.Functions.TriggerCallback(
+            'qb-inventory:server:getInventorySnapshot',
+            function(snapshot)
+                finish(snapshot or false)
+            end,
+            otherInventoryName
+        )
+
+        SetTimeout(1500, function()
+            finish(false)
+        end)
+    end)
 end)
 
 -- RealitySucksRP legacy UI compatibility: the custom UI posts GiveItem directly.
@@ -643,27 +740,13 @@ RegisterNUICallback('RemoveAttachment', function(data, cb)
 
     QBCore.Functions.TriggerCallback('qb-weapons:server:RemoveAttachment', function(NewAttachments)
         if NewAttachments ~= false then
-            local Attachies = {}
-
             -- Keep the weapon data returned to NUI in sync with qb-weapons after detach.
             -- Without this, the new inspection panel can visually re-open with stale attachments.
             WeaponData.info = WeaponData.info or {}
             WeaponData.info.attachments = NewAttachments or {}
 
             RemoveWeaponComponentFromPed(ped, joaat(weaponName), ComponentToHash(Attachment) or joaat(Attachment))
-            for _, v in pairs(NewAttachments or {}) do
-                for attachmentType, weapons in pairs(allAttachments or {}) do
-                    local componentHash = GetConfiguredComponent(weapons, weaponName)
-                    if componentHash and ComponentsMatch(v.component, componentHash) then
-                        local labelItem = QBCore.Shared.Items[attachmentType] or QBCore.Shared.Items[attachmentKey]
-                        Attachies[#Attachies + 1] = {
-                            attachment = attachmentType,
-                            label = (labelItem and labelItem.label) or attachmentType,
-                        }
-                    end
-                end
-            end
-            cb({ ok = true, Attachments = Attachies, WeaponData = WeaponData, itemInfo = itemInfo })
+            cb({ ok = true, Attachments = FormatWeaponAttachments(WeaponData), WeaponData = WeaponData, itemInfo = itemInfo })
         else
             cb({ ok = false, error = 'server_rejected', Attachments = FormatWeaponAttachments(WeaponData), WeaponData = WeaponData })
         end
