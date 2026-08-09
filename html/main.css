@@ -318,7 +318,9 @@
    - Zombie side art is boosted so it appears 50% larger on-screen
    ===================================================================== */
 .rs-inv-wrap {
-    transform: translate(-50%, -50%) scale(.75) !important;
+    /* v2.6: scale(.75) moved to zoom (see CRISP TEXT block at the end of this file).
+       transform scale rasterized the text at full size then shrank it = blurry. */
+    transform: translate(-50%, -50%) !important;
     transform-origin: center center !important;
 }
 
@@ -566,7 +568,8 @@
 /* Height stretch only. Width, 5 columns, and item size stay the same. */
 .rs-inv-wrap {
     top: 50% !important;
-    transform: translate(-50%, -50%) scale(.75) !important;
+    /* v2.6: scale(.75) moved to zoom (see CRISP TEXT block at the end of this file). */
+    transform: translate(-50%, -50%) !important;
     transform-origin: center center !important;
 }
 
@@ -629,7 +632,6 @@
         linear-gradient(rgba(132,255,0,.045) 1px, transparent 1px),
         linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
     background-size: auto, auto, auto, 44px 44px, 44px 44px;
-    filter: blur(.1px);
 }
 
 .inv-panel {
@@ -1490,7 +1492,7 @@ DARKER GLASS:
 .player-inventory-header,
 .other-inventory-header {
     -webkit-font-smoothing: antialiased !important;
-    text-rendering: geometricPrecision !important;
+    text-rendering: optimizeLegibility !important;
 }
 .logo-text,
 .inventory-label {
@@ -1574,7 +1576,7 @@ DARKER GLASS:
 .rs-inv-wrap * {
     -webkit-font-smoothing: antialiased !important;
     -moz-osx-font-smoothing: grayscale !important;
-    text-rendering: geometricPrecision !important;
+    text-rendering: optimizeLegibility !important;
 }
 
 .rs-inv-wrap .logo-text,
@@ -1798,7 +1800,7 @@ DARKER GLASS:
     filter: none !important;
     text-shadow: 0 2px 3px rgba(0,0,0,.95), 0 0 6px rgba(132,255,0,.38) !important;
     -webkit-font-smoothing: antialiased !important;
-    text-rendering: geometricPrecision !important;
+    text-rendering: optimizeLegibility !important;
 }
 
 .item-slot-label,
@@ -2001,13 +2003,15 @@ DARKER GLASS:
 .rs-rework-attachment-panel {
     width: 720px;
     max-width: calc(100vw - 48px);
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
     border: 1px solid rgba(132, 255, 0, 0.48);
     border-radius: 10px;
     background: linear-gradient(165deg, rgba(3, 8, 2, 0.98), rgba(10, 18, 5, 0.98));
     box-shadow: 0 0 65px rgba(80, 180, 20, 0.26), inset 0 0 65px rgba(0, 0, 0, 0.70);
     color: var(--green);
     font-family: 'Share Tech Mono', monospace;
-    overflow: hidden;
+    overflow-x: hidden;
 }
 
 .rs-rework-attachment-panel .attachment-header {
@@ -2228,4 +2232,39 @@ DARKER GLASS:
     .rs-rework-attachment-panel .slots-container {
         grid-template-columns: repeat(2, minmax(90px, 1fr));
     }
+}
+
+/* Overflow list for attachments that do not fit the six standard slots
+   (compensators, barrels, exotic shop items) so nothing installed is invisible. */
+.rs-rework-attachment-panel .overflow-attachments {
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px dashed rgba(132, 255, 0, 0.20);
+}
+
+.rs-rework-attachment-panel .overflow-attachments .slot-type-label {
+    max-width: 90px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* =====================================================================
+   RS Zombie Inventory UI v2.6 - CRISP TEXT (kills the transform-scale blur)
+   The menu previously used transform: scale(.75), which rasterizes text at
+   full size and then shrinks it on the GPU - that is what made every label
+   look blurry. `zoom` lays the UI out at the final size instead, so glyphs
+   render pixel-crisp at the exact same visual size.
+   Centering moves to inset + margin:auto because zoom also multiplies the
+   left/top offsets of the zoomed element itself.
+   ===================================================================== */
+.rs-inv-wrap {
+    zoom: 0.75;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    margin: auto !important;
+    height: fit-content !important;
+    transform: none !important;
 }
