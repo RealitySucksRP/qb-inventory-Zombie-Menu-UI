@@ -8,6 +8,8 @@
   </a>
 </p>
 
+CHECK OUT MY TEBEX STORE: https://reality-sucks-rp-webstore.tebex.io/
+
 # 🧟 RealitySucksRP Zombie Inventory
 
 ### Open Source QB Inventory Rework
