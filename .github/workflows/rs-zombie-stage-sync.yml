@@ -1,44 +1,10 @@
 name: RS Zombie Stage Sync
 
 on:
-  push:
-    branches:
-      - main
-
-permissions:
-  contents: write
+  workflow_dispatch:
 
 jobs:
-  sync-stage:
+  disabled:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Zombie staging branch
-        uses: actions/checkout@v4
-        with:
-          ref: source-update-zombie-v3.0.2
-          fetch-depth: 0
-
-      - name: Build exact Zombie v3.0.2 index
-        shell: bash
-        run: |
-          set -euo pipefail
-          rm -rf /tmp/rs-punk
-          git clone --depth 1 --branch main https://github.com/RealitySucksRP/qb-inventory-reworked-images-in-menu.git /tmp/rs-punk
-          cp /tmp/rs-punk/html/index.html html/index.html
-          cat .rs-update/index.patch.1 .rs-update/index.patch.2 .rs-update/index.patch.3 > /tmp/index.patch
-          patch --batch -p0 < /tmp/index.patch
-          test "$(git hash-object html/index.html)" = "ac857af8d560e26b7dfdd5832c8ddaaae613f701"
-
-      - name: Commit exact Zombie index
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config user.name "RealitySucksRP Update Bot"
-          git config user.email "actions@users.noreply.github.com"
-          git add html/index.html
-          if git diff --cached --quiet; then
-            echo "Zombie index already matches."
-            exit 0
-          fi
-          git commit -m "Update Zombie inventory UI index to v3.0.2"
-          git push origin HEAD:source-update-zombie-v3.0.2
+      - run: echo "temporary staging helper disabled"
