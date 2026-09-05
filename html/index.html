@@ -4,18 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Reality Sucks Zombie Inventory</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Creepster&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="vendor/fonts.css" />
+    <link rel="stylesheet" href="vendor/fontawesome/css/fontawesome.min.css" />
+    <link rel="stylesheet" href="vendor/fontawesome/css/solid.min.css" />
+    <link rel="stylesheet" href="vendor/floating-vue.css" />
     <link rel="stylesheet" href="main.css" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css" />
-    <link rel="stylesheet" href="https://unpkg.com/floating-vue@5.2.2/dist/style.css" />
-    <script src="https://kit.fontawesome.com/d37231be1f.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@floating-ui/core@1.6.0"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@floating-ui/dom@1.6.1"></script>
-    <script src="https://unpkg.com/floating-vue@5.2.2/dist/floating-vue.umd.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.2/axios.min.js"></script>
+    <script src="vendor/vue.global.prod.js"></script>
+    <script src="vendor/floating-ui.core.umd.js"></script>
+    <script src="vendor/floating-ui.dom.umd.js"></script>
+    <script src="vendor/floating-vue.umd.js"></script>
+    <script src="vendor/axios.min.js"></script>
     <script src="app.js" defer></script>
 </head>
 <body>
@@ -54,7 +52,7 @@
 
 
                 <div class="grid-wrap player-inventory" :class="{ 'centered-player-inventory': shouldCenterInventory }">
-                    <div class="grid-title">☣ SURVIVOR INVENTORY</div>
+                    <div class="grid-title">&#9763; SURVIVOR INVENTORY</div>
                     <div class="grid-tools" v-if="!isOtherInventoryEmpty">
                         <span>AMOUNT</span>
                         <div class="input-wrapper compact-amount">
@@ -81,7 +79,7 @@
             <div class="other-zone" v-if="!isOtherInventoryEmpty">
                 <div class="other-inventory-header">
                     <div class="labels-container">
-                        <div class="inventory-label"><span class="inventory-icon1"><i class="fa-brands fa-dropbox"></i></span><p>{{ otherInventoryLabel }}</p></div>
+                        <div class="inventory-label"><span class="inventory-icon1"><i class="fas fa-box-open"></i></span><p>{{ otherInventoryLabel }}</p></div>
                         <div class="current-weight">{{ (otherInventoryWeight / 1000).toFixed(1) }} KG / {{(otherInventoryMaxWeight / 1000).toFixed(1) }} KG</div>
                     </div>
                 </div>
@@ -101,8 +99,8 @@
             </div>
 
             <div class="bottombar">
-                <div class="hint"><span>☢</span> CONTAMINATED GRID / CRACKED STEEL SLOTS</div>
-                <div class="hint"><span>☠</span> 5-COLUMN SURVIVAL LAYOUT</div>
+                <div class="hint"><span>&#9762;</span> CONTAMINATED GRID / CRACKED STEEL SLOTS</div>
+                <div class="hint"><span>&#9760;</span> 5-COLUMN SURVIVAL LAYOUT</div>
                 <div class="hint">STATUS: <span>QUARANTINE</span></div>
             </div>
         </div>
