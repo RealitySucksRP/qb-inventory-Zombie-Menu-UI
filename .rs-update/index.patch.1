@@ -1,0 +1,192 @@
+--- html/index.html
++++ html/index.html
+@@ -1,278 +1,240 @@
+ <!DOCTYPE html>
+ <html lang="en">
+-    <head>
+-        <meta charset="UTF-8" />
+-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+-        <title>QB Inventory</title>
+-        <link rel="stylesheet" href="main.css" />
+-        <link rel="stylesheet" href="vendor/fontawesome/css/fontawesome.min.css" />
+-        <link rel="stylesheet" href="vendor/fontawesome/css/solid.min.css" />
+-        <link rel="stylesheet" href="vendor/fontawesome/css/brands.min.css" />
+-        <link rel="stylesheet" href="vendor/floating-vue.css" />
+-        <script src="vendor/vue.global.prod.js"></script>
+-        <script src="vendor/floating-ui.core.umd.js"></script>
+-        <script src="vendor/floating-ui.dom.umd.js"></script>
+-        <script src="vendor/floating-vue.umd.js"></script>
+-        <script src="vendor/axios.min.js"></script>
+-        <script src="app.js" defer></script>
+-    </head>
+-    <body>
+-
+-        <div id="app">
+-            <!-- RS custom background art layer - behind menu UI -->
+-            <div class="rs-ui-art rs-art-zhead" v-if="isInventoryOpen" aria-hidden="true"></div>
+-            <div class="rs-ui-art rs-art-zbody" v-if="isInventoryOpen" aria-hidden="true"></div>
+-            <div class="rs-ui-art rs-art-zskelly" v-if="isInventoryOpen" aria-hidden="true"></div>
+-
+-<div class="inventory-container" v-if="isInventoryOpen" @mousemove="drag" @mouseup="endDrag" @mousedown="containerMouseDownAction">
+-
+-                <!-- TOPBAR - logo + weight -->
+-                <div class="player-inventory-header" :class="{ 'centered-inventory-header': shouldCenterInventory }">
+-                    <div class="labels-container">
+-                        <div class="inventory-label">
+-                            <span class="inventory-icon"><i class="fa-solid fa-person-rays"></i></span>
+-                            {{ inventoryLabel }}
+-                        </div>
+-                        <div class="current-weight">
+-                            <i class="fa-solid fa-weight-scale fa-beat-fade" style="color:#f59e0b;"></i>&nbsp;
+-                            {{ gramsToLbs(playerWeight) }} / {{ gramsToLbs(maxWeight) }} LBS
+-                        </div>
+-                    </div>
+-                </div>
+-
+-                <!-- PLAYER INVENTORY GRID -->
+-                <div class="player-inventory" :class="{ 'centered-player-inventory': shouldCenterInventory }">
+-                    <div class="item-grid">
+-                        <div v-for="slot in totalSlots" :key="slot" class="item-slot" :data-slot="slot" :class="{ 'invalid-slot-highlight': errorSlot === slot }" @dblclick="getItemInSlot(slot, 'player') && useItem(getItemInSlot(slot, 'player'))" @mousedown="event => handleMouseDown(event, slot, 'player')">
+-                            <div class="item-slot-key" v-if="slot <= 5"><p>{{ slot }}</p></div>
+-                            <div class="item-slot-img" v-if="getItemInSlot(slot, 'player')" v-tooltip.right-end="{content: generateTooltipContent(getItemInSlot(slot, 'player')), html: true}">
+-                                <img :src="'images/' + getItemInSlot(slot, 'player').image" alt="" />
+-                            </div>
+-                            <div class="item-slot-amount" v-if="getItemInSlot(slot, 'player')">
+-                                <p>{{ formatItemAmount(getItemInSlot(slot, 'player')) }}</p>
+-                            </div>
+-                            <div class="item-slot-durability" v-if="getItemInSlot(slot, 'player')">
+-                                <div class="item-slot-durability-fill"
+-                                    v-if="getItemInSlot(slot, 'player').info && 'quality' in getItemInSlot(slot, 'player').info"
+-                                    :style="{ width: (getItemInSlot(slot, 'player').info.quality / 100) * 100 + '%' }"
+-                                    :class="{ 'high': getItemInSlot(slot, 'player').info.quality > 75, 'medium': getItemInSlot(slot, 'player').info.quality <= 75 && getItemInSlot(slot, 'player').info.quality > 25, 'low': getItemInSlot(slot, 'player').info.quality <= 25 }">
+-                                </div>
++<head>
++    <meta charset="UTF-8" />
++    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
++    <title>Reality Sucks Zombie Inventory</title>
++    <link rel="stylesheet" href="vendor/fonts.css" />
++    <link rel="stylesheet" href="vendor/fontawesome/css/fontawesome.min.css" />
++    <link rel="stylesheet" href="vendor/fontawesome/css/solid.min.css" />
++    <link rel="stylesheet" href="vendor/floating-vue.css" />
++    <link rel="stylesheet" href="main.css" />
++    <script src="vendor/vue.global.prod.js"></script>
++    <script src="vendor/floating-ui.core.umd.js"></script>
++    <script src="vendor/floating-ui.dom.umd.js"></script>
++    <script src="vendor/floating-vue.umd.js"></script>
++    <script src="vendor/axios.min.js"></script>
++    <script src="app.js" defer></script>
++</head>
++<body>
++<div id="app">
++    <div class="inventory-container rs-inv-wrap" v-if="isInventoryOpen" @mousemove="drag" @mouseup="endDrag" @mousedown="containerMouseDownAction">
++        <div class="zhead ui-art ui-art-left" aria-hidden="true"></div>
++        <div class="zbody ui-art ui-art-right" aria-hidden="true"></div>
++        <div class="zskelly ui-art ui-art-bottom-right" aria-hidden="true"></div>
++
++        <div class="inv-panel">
++            <div class="rs-menu-watermark" aria-hidden="true"></div>
++            <div class="drip" style="left:14%;width:3px;height:14px;animation-delay:.2s"></div>
++            <div class="drip" style="left:31%;width:4px;height:10px;animation-delay:1.0s"></div>
++            <div class="drip" style="left:52%;width:3px;height:18px;animation-delay:.6s"></div>
++            <div class="drip" style="left:68%;width:2px;height:12px;animation-delay:1.5s"></div>
++            <div class="drip" style="left:84%;width:3px;height:16px;animation-delay:.9s"></div>
++
++            <div class="topbar player-inventory-header" :class="{ 'centered-inventory-header': shouldCenterInventory }">
++                <div class="logo labels-container">
++                    <div class="logo-left">
++                        <div class="rslogo ui-art-logo" aria-hidden="true"></div>
++                        <div>
++                            <div class="logo-text">SURVIVOR INVENTORY</div>
++                            <div class="logo-sub">REALITY SUCKS RP // QUARANTINE</div>
++                        </div>
++                    </div>
++                    <div class="stats-row">
++                        <div class="stat"><div class="stat-lbl">WEIGHT</div><div class="stat-val">{{ (playerWeight / 1000).toFixed(1) }} / {{ (maxWeight / 1000).toFixed(1) }} KG</div></div>
++                        <div class="stat"><div class="stat-lbl">SLOTS</div><div class="stat-val">{{ totalSlots }}</div></div>
++                        <div class="stat" v-if="!isOtherInventoryEmpty"><div class="stat-lbl">OPENED</div><div class="stat-val">{{ otherInventoryLabel }}</div></div>
++                    </div>
++                </div>
++            </div>
++
++            <div class="inv-body">
++
++
++                <div class="grid-wrap player-inventory" :class="{ 'centered-player-inventory': shouldCenterInventory }">
++                    <div class="grid-title">&#9763; SURVIVOR INVENTORY</div>
++                    <div class="grid-tools" v-if="!isOtherInventoryEmpty">
++                        <span>AMOUNT</span>
++                        <div class="input-wrapper compact-amount">
++                            <input type="number" v-model="transferAmount" min="1" :placeholder="transferAmount === null ? 'amount' : ''" />
++                            <button @click="clearTransferAmount" class="clear-button"><i class="fas fa-times"></i></button>
++                        </div>
++                    </div>
++                    <div class="item-grid grid">
++                        <div v-for="slot in totalSlots" :key="slot" class="item-slot slot" :data-slot="slot" :class="{ 'invalid-slot-highlight': errorSlot === slot, 'has': getItemInSlot(slot, 'player') }" v-tooltip.right-end="getTooltip(getItemInSlot(slot, 'player'))" @dblclick="getItemInSlot(slot, 'player') && useItem(getItemInSlot(slot, 'player'))" @mousedown="event => handleMouseDown(event, slot, 'player')">
++                            <div class="item-slot-key player-slot-key" v-if="slot <= 5"><p>{{ slot }}</p></div>
++                            <div class="item-slot-img" v-if="getItemInSlot(slot, 'player')">
++                                <img :src="'images/' + getItemInSlot(slot, 'player').image" alt="" @error="setMissingImage" />
++                            </div>
++                            <div class="item-slot-amount qty" v-if="getItemInSlot(slot, 'player')"><p>{{ formatItemAmount(getItemInSlot(slot, 'player')) }}</p></div>
++                            <div class="item-slot-durability dur" v-if="getItemInSlot(slot, 'player')">
++                                <div class="item-slot-durability-fill" v-if="getItemInSlot(slot, 'player').info && 'quality' in getItemInSlot(slot, 'player').info" :style="{ width: (getItemInSlot(slot, 'player').info.quality / 100) * 100 + '%' }" :class="{ 'high': getItemInSlot(slot, 'player').info.quality > 75, 'medium': getItemInSlot(slot, 'player').info.quality <= 75 && getItemInSlot(slot, 'player').info.quality > 25, 'low': getItemInSlot(slot, 'player').info.quality <= 25 }"></div>
+                                 <div class="item-slot-durability-fill" v-else style="width: 0%"></div>
+                             </div>
+                         </div>
+                     </div>
+                 </div>
++            </div>
+ 
+-                <!-- TRANSFER AMOUNT INPUT -->
+-                <div class="input-container" v-if="!isOtherInventoryEmpty">
+-                    <div class="input-wrapper">
+-                        <input type="number" v-model="transferAmount" min="1" :placeholder="transferAmount === null ? 'amount' : ''" />
+-                        <button @click="clearTransferAmount" class="clear-button"><i class="fas fa-times"></i></button>
+-                    </div>
+-                </div>
+-
+-                <!-- OTHER INVENTORY HEADER -->
+-                <div class="other-inventory-header" v-if="!isOtherInventoryEmpty">
++            <div class="other-zone" v-if="!isOtherInventoryEmpty">
++                <div class="other-inventory-header">
+                     <div class="labels-container">
+-                        <div class="inventory-label">
+-                            <span class="inventory-icon1"><i class="fa-brands fa-dropbox"></i></span>
+-                            <p>{{ otherInventoryLabel }}</p>
+-                        </div>
+-                        <div class="current-weight">
+-                            <i class="fa-solid fa-weight-scale fa-beat-fade" style="color:#f59e0b;"></i>&nbsp;
+-                            {{ gramsToLbs(otherInventoryWeight) }} LBS / {{ gramsToLbs(otherInventoryMaxWeight) }} LBS
+-                        </div>
++                        <div class="inventory-label"><span class="inventory-icon1"><i class="fas fa-box-open"></i></span><p>{{ otherInventoryLabel }}</p></div>
++                        <div class="current-weight">{{ (otherInventoryWeight / 1000).toFixed(1) }} KG / {{(otherInventoryMaxWeight / 1000).toFixed(1) }} KG</div>
+                     </div>
+                 </div>
+-
+-                <!-- OTHER INVENTORY GRID -->
+-                <div class="other-inventory" v-if="!isOtherInventoryEmpty">
+-                    <div class="item-grid">
+-                        <div v-for="slot in otherInventorySlots" :key="slot" class="item-slot" :data-slot="slot" @mousedown="event => handleMouseDown(event, slot, 'other')" @dragover.prevent>
+-                            <div class="item-slot-img" v-if="getItemInSlot(slot, 'other')" v-tooltip.right-end="{content: generateTooltipContent(getItemInSlot(slot, 'other')), html: true}">
+-                                <img :src="'images/' + getItemInSlot(slot, 'other').image" alt="" />
+-                            </div>
+-                            <div class="item-slot-amount" v-if="getItemInSlot(slot, 'other')">
+-                                <p>{{ formatItemAmount(getItemInSlot(slot, 'other')) }}</p>
+-                            </div>
+-                            <div v-if="isShopInventory && getItemInSlot(slot, 'other')" class="item-price">
+-                                <p>${{ getItemInSlot(slot, 'other').price }}</p>
+-                            </div>
+-                            <div class="item-slot-durability" v-if="getItemInSlot(slot, 'other')">
+-                                <div class="item-slot-durability-fill"
+-                                    v-if="getItemInSlot(slot, 'other').info && 'quality' in getItemInSlot(slot, 'other').info"
+-                                    :style="{ width: (getItemInSlot(slot, 'other').info.quality / 100) * 100 + '%' }"
+-                                    :class="{ 'high': getItemInSlot(slot, 'other').info.quality > 75, 'medium': getItemInSlot(slot, 'other').info.quality <= 75 && getItemInSlot(slot, 'other').info.quality > 25, 'low': getItemInSlot(slot, 'other').info.quality <= 25 }">
+-                                </div>
++                <div class="other-inventory">
++                    <div class="item-grid grid other-grid">
++                        <div v-for="slot in otherInventorySlots" :key="slot" class="item-slot slot" :data-slot="slot" :class="{ 'has': getItemInSlot(slot, 'other') }" v-tooltip.right-end="getTooltip(getItemInSlot(slot, 'other'))" @mousedown="event => handleMouseDown(event, slot, 'other')" @dragover.prevent>
++                            <div class="item-slot-img" v-if="getItemInSlot(slot, 'other')"><img :src="'images/' + getItemInSlot(slot, 'other').image" alt="" @error="setMissingImage" /></div>
++                            <div class="item-slot-amount qty" v-if="getItemInSlot(slot, 'other')"><p>{{ formatItemAmount(getItemInSlot(slot, 'other')) }}</p></div>
++                            <div v-if="isShopInventory && getItemInSlot(slot, 'other')" class="item-price"><p>${{ getItemInSlot(slot, 'other').price }}</p></div>
++                            <div class="item-slot-durability dur" v-if="getItemInSlot(slot, 'other')">
++                                <div class="item-slot-durability-fill" v-if="getItemInSlot(slot, 'other').info && 'quality' in getItemInSlot(slot, 'other').info" :style="{ width: (getItemInSlot(slot, 'other').info.quality / 100) * 100 + '%' }" :class="{ 'high': getItemInSlot(slot, 'other').info.quality > 75, 'medium': getItemInSlot(slot, 'other').info.quality <= 75 && getItemInSlot(slot, 'other').info.quality > 25, 'low': getItemInSlot(slot, 'other').info.quality <= 25 }"></div>
+                                 <div class=
