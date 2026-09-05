@@ -1,0 +1,205 @@
+"item-slot-durability-fill" v-else style="width: 0%"></div>
+                             </div>
+                         </div>
+                     </div>
+                 </div>
++            </div>
+ 
++            <div class="bottombar">
++                <div class="hint"><span>&#9762;</span> CONTAMINATED GRID / CRACKED STEEL SLOTS</div>
++                <div class="hint"><span>&#9760;</span> 5-COLUMN SURVIVAL LAYOUT</div>
++                <div class="hint">STATUS: <span>QUARANTINE</span></div>
+             </div>
++        </div>
++    </div>
+ 
+-            <!-- HOTBAR -->
+-            <div class="hotbar-container" v-if="showHotbar">
+-                <div class="hotbar">
+-                    <div v-for="slot in 5" :key="slot" class="item-slot">
+-                        <div class="item-slot-key"><p>{{ slot }}</p></div>
+-                        <div class="item-slot-img" v-if="getHotbarItemInSlot(slot)">
+-                            <img :src="'images/' + getHotbarItemInSlot(slot).image" alt="" />
+-                        </div>
+-                        <div class="item-slot-amount" v-if="getHotbarItemInSlot(slot)">
+-                            <p>{{ formatItemAmount(getHotbarItemInSlot(slot)) }}</p>
+-                        </div>
+-                        <div class="item-slot-durability" v-if="getHotbarItemInSlot(slot)">
+-                            <div class="item-slot-durability-fill"
+-                                v-if="getHotbarItemInSlot(slot).info && 'quality' in getHotbarItemInSlot(slot).info"
+-                                :style="{ width: (getHotbarItemInSlot(slot).info.quality / 100) * 100 + '%' }"
+-                                :class="{ 'high': getHotbarItemInSlot(slot).info.quality > 75, 'medium': getHotbarItemInSlot(slot).info.quality <= 75 && getHotbarItemInSlot(slot).info.quality > 25, 'low': getHotbarItemInSlot(slot).info.quality <= 25 }">
+-                            </div>
+-                            <div class="item-slot-durability-fill" v-else style="width: 0%"></div>
+-                        </div>
+-                        <div class="item-slot-label" v-if="getHotbarItemInSlot(slot)">
+-                            <p>{{ getHotbarItemInSlot(slot).label }}</p>
+-                        </div>
+-                    </div>
+-                </div>
++    <div class="hotbar-container" v-if="showHotbar">
++        <div class="hotbar">
++            <div v-for="slot in 5" :key="slot" class="item-slot slot">
++                <div class="item-slot-key"><p>{{ slot }}</p></div>
++                <div class="item-slot-img" v-if="getHotbarItemInSlot(slot)"><img :src="'images/' + getHotbarItemInSlot(slot).image" alt="" @error="setMissingImage" /></div>
++                <div class="item-slot-amount qty" v-if="getHotbarItemInSlot(slot)"><p>{{ formatItemAmount(getHotbarItemInSlot(slot)) }}</p></div>
++                <div class="item-slot-durability dur" v-if="getHotbarItemInSlot(slot)"><div class="item-slot-durability-fill" v-if="getHotbarItemInSlot(slot).info && 'quality' in getHotbarItemInSlot(slot).info" :style="{ width: (getHotbarItemInSlot(slot).info.quality / 100) * 100 + '%' }" :class="{ 'high': getHotbarItemInSlot(slot).info.quality > 75, 'medium': getHotbarItemInSlot(slot).info.quality <= 75 && getHotbarItemInSlot(slot).info.quality > 25, 'low': getHotbarItemInSlot(slot).info.quality <= 25 }"></div></div>
++                <div class="item-slot-label" v-if="getHotbarItemInSlot(slot)"><p>{{ getHotbarItemInSlot(slot).label }}</p></div>
+             </div>
++        </div>
++    </div>
+ 
+-            <!-- NOTIFICATION -->
+-            <div class="notification-container" v-if="showNotification">
+-                <div class="notification-slot">
+-                    <div class="notification-title"><p>{{ notificationType }}</p></div>
+-                    <div class="item-slot-img"><img v-bind="getImageAttrs(notificationImage)" alt="" @error="setMissingImage" /></div>
+-                    <div class="item-slot-amount"><p>x{{ notificationAmount }}</p></div>
+-                    <div class="item-slot-label"><p>{{ notificationText }}</p></div>
+-                </div>
++    <div class="notification-container" v-if="showNotification">
++        <div class="notification-slot slot">
++            <div class="notification-title"><p>{{ notificationType }}</p></div>
++            <div class="item-slot-img"><img :src="notificationImage" alt="" @error="setMissingImage" /></div>
++            <div class="item-slot-amount qty"><p>x{{ notificationAmount }}</p></div>
++            <div class="item-slot-label"><p>{{ notificationText }}</p></div>
++        </div>
++    </div>
++
++    <div class="required-item-container" v-if="showRequiredItems">
++        <div class="required-item">
++            <div v-for="(item, index) in requiredItems" :key="index" class="item-slot slot">
++                <div class="item-slot-img"><img :src="'images/' + item.image" alt="" @error="setMissingImage" /></div>
++                <div class="item-slot-label"><p>{{ item.label }}</p></div>
+             </div>
++        </div>
++    </div>
+ 
+-            <!-- REQUIRED ITEMS -->
+-            <div class="required-item-container" v-if="showRequiredItems">
+-                <div class="required-item">
+-                    <div v-for="(item, index) in requiredItems" :key="index" class="item-slot">
+-                        <div class="item-slot-img"><img :src="'images/' + item.image" alt="" /></div>
+-                        <div class="item-slot-label"><p>{{ item.label }}</p></div>
+-                    </div>
+-                </div>
++    <div class="attachment-panel-overlay" v-if="isAttachmentPanelOpen && selectedWeaponForPanel" @mousedown.stop @click.stop>
++        <div class="attachment-panel rs-rework-attachment-panel">
++            <div class="attachment-header">
++                <h3>Weapon Inspection</h3>
++                <button @click="closeAttachmentPanel" class="close-panel-button">&times;</button>
+             </div>
+ 
+-            <!-- REWORK WEAPON ATTACHMENT INSPECTION PANEL -->
+-            <div class="attachment-panel-overlay" v-if="isAttachmentPanelOpen && selectedWeaponForPanel" @mousedown.stop @click.stop>
+-                    <div class="attachment-panel rs-rework-attachment-panel">
+-                        <div class="attachment-header">
+-                            <h3>Weapon Inspection</h3>
+-                            <button @click="closeAttachmentPanel" class="close-panel-button">&times;</button>
++            <div class="inspection-content">
++                <div class="weapon-display-column">
++                    <div class="weapon-main-image">
++                        <img :src="'images/' + selectedWeaponForPanel.image" :alt="selectedWeaponForPanel.label || selectedWeaponForPanel.name" @error="setMissingImage" />
++                    </div>
++                    <h4 class="weapon-title">{{ selectedWeaponForPanel.label || selectedWeaponForPanel.name }}</h4>
++                    <div class="weapon-stats">
++                        <div class="stat-item">
++                            <span class="stat-label">Serial No.</span>
++                            <span class="stat-value">{{ (selectedWeaponForPanel.info && (selectedWeaponForPanel.info.serie || selectedWeaponForPanel.info.serial)) || 'N/A' }}</span>
+                         </div>
+-
+-                        <div class="inspection-content">
+-                            <div class="weapon-display-column">
+-                                <div class="weapon-main-image">
+-                                    <img :src="'images/' + selectedWeaponForPanel.image" :alt="selectedWeaponForPanel.label || selectedWeaponForPanel.name" @error="setMissingImage" />
+-                                </div>
+-                                <h4 class="weapon-title">{{ selectedWeaponForPanel.label || selectedWeaponForPanel.name }}</h4>
+-                                <div class="weapon-stats">
+-                                    <div class="stat-item">
+-                                        <span class="stat-label">Serial No.</span>
+-                                        <span class="stat-value">{{ (selectedWeaponForPanel.info && (selectedWeaponForPanel.info.serie || selectedWeaponForPanel.info.serial)) || 'N/A' }}</span>
+-                                    </div>
+-                                    <div class="stat-item">
+-                                        <span class="stat-label">Quality</span>
+-                                        <div class="stat-bar-container">
+-                                            <div class="stat-bar" :style="{ width: Math.max(0, Math.min(100, (selectedWeaponForPanel.info && selectedWeaponForPanel.info.quality) || 0)) + '%' }"></div>
+-                                        </div>
+-                                    </div>
+-                                    <div class="stat-item" v-if="getWeaponTintLabel()">
+-                                        <span class="stat-label">Tint</span>
+-                                        <span class="stat-value">{{ getWeaponTintLabel() }}</span>
+-                                    </div>
+-                                </div>
+-                            </div>
+-
+-                            <div class="attachment-slots-column">
+-                                <h4 class="column-title">Attachment Slots</h4>
+-                                <div class="slots-container">
+-                                    <div class="attachment-slot-wrapper" v-for="slotDef in [
+-                                            { type: 'muzzle', label: 'Muzzle' },
+-                                            { type: 'flashlight', label: 'Flashlight' },
+-                                            { type: 'grip', label: 'Grip' },
+-                                            { type: 'optics', label: 'Optics' },
+-                                            { type: 'magazine', label: 'Magazine' },
+-                                            { type: 'skin', label: 'Skin / Tint' }
+-                                        ]" :key="slotDef.type">
+-                                        <div class="attachment-slot-box" :class="{ 'filled': getAttachmentBySlot(slotDef.type) }" @click="getAttachmentBySlot(slotDef.type) && removeAttachment(getAttachmentBySlot(slotDef.type))" v-tooltip.left-end="getAttachmentSlotTooltip(slotDef.type)">
+-                                            <img v-if="getAttachmentBySlot(slotDef.type)" v-bind="getAttachmentImageAttrs(getAttachmentBySlot(slotDef.type))" @error="setMissingImage" />
+-                                            <i v-else class="fa-solid fa-plus empty-slot-icon"></i>
+-                                        </div>
+-                                        <span class="slot-type-label">{{ slotDef.label }}</span>
+-                                    </div>
+-                                </div>
+-                                <div class="overflow-attachments" v-if="overflowAttachments.length > 0">
+-                                    <h4 class="column-title">Other Attachments</h4>
+-                                    <div class="slots-container">
+-                                        <div class="attachment-slot-wrapper" v-for="att in overflowAttachments" :key="att.attachment">
+-                                            <div class="attachment-slot-box filled" @click="removeAttachment(att)" v-tooltip.left-end="'Detach ' + (att.label || att.attachment)">
+-                                                <img v-bind="getAttachmentImageAttrs(att)" @error="setMissingImage" />
+-                                            </div>
+-                                            <span class="slot-type-label">{{ att.label || att.attachment }}</span>
+-                                        </div>
+-                                    </div>
+-                                </div>
+-                                <div class="attachment-panel-note">Click a filled slot to remove that attachment.</div>
++                        <div class="stat-item">
++                            <span class="stat-label">Quality</span>
++                            <div class="stat-bar-container">
++                                <div class="stat-bar" :style="{ width: Math.max(0, Math.min(100, (selectedWeaponForPanel.info && selectedWeaponForPanel.info.quality) || 0)) + '%' }"></div>
+                             </div>
+                         </div>
++                        <div class="stat-item" v-if="getWeaponTintLabel()">
++                            <span class="stat-label">Tint</span>
++                            <span class="stat-value">{{ getWeaponTintLabel() }}</span>
++                        </div>
+                     </div>
+                 </div>
+ 
+-            <!-- DROP CONFIRMATION (3.0.2 behavior; punk theme preserved) -->
+-            <div class="drop-confirm" v-if="showDropDialog">
+-                <div class="drop-confirm-box">
+-                    <div class="drop-title">DROP ITEM</div>
+-                    <div class="drop-item-name">{{ pendingDropItem ? (pendingDropItem.label || pendingDropItem.name) : '' }}</div>
+-                    <input class="drop-amount-input" type="number" min="1" :max="pendingDropItem ? pendingDropItem.amount : 1" v-model="dropDialogAmount" />
+-                    <div class="drop-actions">
+-                        <button @click="confirmDropDialog">DROP</button>
+-                        <button @click="cancelDropDialog">CANCEL</button>
++                <div class="attachment-slots-column">
++                    <h4 class="column-title">Attachment Slots</h4>
++                    <div class="slots-container">
++                        <div class="attachment-slot-wrapper" v-for="slotDef in [
++                                { type: 'muzzle', label: 'Muzzle' },
++                                { type: 'flashlight', label: 'Flashlight' },
++                                { type: 'grip', label: 'Grip' },
++                                { type: 'optics', label: 'Optics' },
++                                { type: 'magazine', label: 'Magazine' },
++                                { type: 'skin', label: 'Skin / Tint' }
++                            ]" :key="slotDef.type">
++                            <div class="attachment-slot-box" :class="{ 'filled': getAttachmentBySlot(slotDef.type) }" @click="getAttachmentBySlot(slotDef.type) && removeAttachment(getAttachmentBySlot(slotDef.type))" v-tooltip.left-end="getAttachmentSlotTooltip(slotDef.type)">
++                                <img v-if="getAttachmentBySlot(slotDef.type)" :src="getAttachmentImage(getAttachmentBySlot(slotDef.type))" @error="setMissingImage" />
++                                <i v-else class="fa-solid fa-plus empty-slot-icon"></i>
++                            </div>
++                            <span class="slot-type-label">{{ slotDef.label }}</span>
++                        </div>
+                     </div>
++                    <div clas
