@@ -8,14 +8,13 @@ RegisteredShops = {}
 local saveCounters = {}
 local activeDropRequests = {}
 local completedDropRequests = {}
+local lastVendingOpen = {}
 local SAVE_DELAY = 2500 -- save timer in milliseconds
 Config.Debug = false -- Set to false to disable console logs
 
-local webhook_url = "YOUR_DISCORD_WEBHOOK_URL_HERE" -- Put your discord webhook url here for player rob logs
-
-
 local function SendRobberyLogToDiscord(title, color, fields)
-    if not webhook_url or webhook_url == "YOUR_DISCORD_WEBHOOK_URL_HERE" then return end
+    local webhook_url = Config.RobberyWebhook
+    if type(webhook_url) ~= 'string' or webhook_url == '' then return end
     local embed = {
         {
             ["title"] = title,
@@ -30,7 +29,7 @@ local function SendRobberyLogToDiscord(title, color, fields)
     PerformHttpRequest(webhook_url, function(err, text, headers) end, 'POST', json.encode({ embeds = embed }), { ['Content-Type'] = 'application/json' })
 end
 
-local function SanitizeInventory(items)
+function SanitizeInventory(items)
     if not items or type(items) ~= 'table' then return {} end
     local sanitizedItems = {}
     for k, v in pairs(items) do
@@ -85,11 +84,16 @@ CreateThread(function()
 end)
 
 AddEventHandler('QBCore:Server:PlayerUnloaded', function(source)
+    if type(source) == 'table' and source.PlayerData then
+        source = source.PlayerData.source
+    end
     source = tonumber(source)
     if not source then return end
+    CleanupInventorySession(source, true)
     if saveCounters[source] then saveCounters[source] = nil end
     activeDropRequests[source] = nil
     completedDropRequests[source] = nil
+    lastVendingOpen[source] = nil
     SaveInventory(source)
 
     for _, inv in pairs(Inventories) do
@@ -165,37 +169,38 @@ end)
 AddEventHandler('onResourceStart', function(resourceName)
     if resourceName ~= GetCurrentResourceName() then return end
     local Players = QBCore.Functions.GetPlayers()
-    for k in pairs(Players) do
-        QBCore.Functions.AddPlayerMethod(k, 'AddItem',
+    for _, playerId in pairs(Players) do
+        ClearInventorySession(playerId)
+        QBCore.Functions.AddPlayerMethod(playerId, 'AddItem',
                                          function(item, amount, slot, info)
-            return AddItem(k, item, amount, slot, info)
+            return AddItem(playerId, item, amount, slot, info)
         end)
 
-        QBCore.Functions.AddPlayerMethod(k, 'RemoveItem', function(item, amount,
+        QBCore.Functions.AddPlayerMethod(playerId, 'RemoveItem', function(item, amount,
                                                                    slot)
-            return RemoveItem(k, item, amount, slot)
+            return RemoveItem(playerId, item, amount, slot)
         end)
 
-        QBCore.Functions.AddPlayerMethod(k, 'GetItemBySlot', function(slot)
-            return GetItemBySlot(k, slot)
+        QBCore.Functions.AddPlayerMethod(playerId, 'GetItemBySlot', function(slot)
+            return GetItemBySlot(playerId, slot)
         end)
 
-        QBCore.Functions.AddPlayerMethod(k, 'GetItemByName', function(item)
-            return GetItemByName(k, item)
+        QBCore.Functions.AddPlayerMethod(playerId, 'GetItemByName', function(item)
+            return GetItemByName(playerId, item)
         end)
 
-        QBCore.Functions.AddPlayerMethod(k, 'GetItemsByName', function(item)
-            return GetItemsByName(k, item)
+        QBCore.Functions.AddPlayerMethod(playerId, 'GetItemsByName', function(item)
+            return GetItemsByName(playerId, item)
         end)
 
-        QBCore.Functions.AddPlayerMethod(k, 'ClearInventory', function(
-            filterItems) ClearInventory(k, filterItems) end)
+        QBCore.Functions.AddPlayerMethod(playerId, 'ClearInventory', function(
+            filterItems) ClearInventory(playerId, filterItems) end)
 
-        QBCore.Functions.AddPlayerMethod(k, 'SetInventory', function(items)
-            SetInventory(k, items)
+        QBCore.Functions.AddPlayerMethod(playerId, 'SetInventory', function(items)
+            SetInventory(playerId, items)
         end)
 
-        Player(k).state.inv_busy = false
+        Player(playerId).state.inv_busy = false
     end
 end)
 
@@ -215,15 +220,32 @@ RegisterNetEvent('qb-inventory:server:openVending', function(data)
     local src = source
     local Player = QBCore.Functions.GetPlayer(src)
     if not Player then return end
+
+    local now = GetGameTimer()
+    local lastOpen = lastVendingOpen[src] or 0
+    if now - lastOpen < 1000 then return end
+    lastVendingOpen[src] = now
+
+    -- The shop used to be built from client-supplied `data.coords`, and
+    -- attemptPurchase then validated the player's distance against those same
+    -- coords, so the check compared the attacker's number against itself.
+    -- The player's real server-side position is used instead, which makes the
+    -- purchase-time check mean "you have not walked away from the machine".
+    --
+    -- The key is per-player because a single global 'vending' entry meant two
+    -- players at two different machines overwrote each other.
+    local shopName = 'vending-' .. src
+    local playerCoords = GetEntityCoords(GetPlayerPed(src))
+
     CreateShop({
-        name = 'vending',
+        name = shopName,
         label = 'Vending Machine',
-        coords = data.coords,
+        coords = playerCoords,
         slots = #Config.VendingItems,
         items = Config.VendingItems
     })
     TriggerClientEvent('qb-inventory:client:sendServerTime', source, os.time())
-    OpenShop(src, 'vending')
+    OpenShop(src, shopName)
 end)
 
 local function GetItemCountInMap(items)
@@ -237,39 +259,76 @@ RegisterNetEvent('qb-inventory:server:closeInventory', function(inventory)
     local src = source
     local QBPlayer = QBCore.Functions.GetPlayer(src)
     if not QBPlayer then return end
-    Player(source).state.inv_busy = false
-    if inventory:find('shop%-') then return end
-    if inventory:find('otherplayer%-') then
-        local targetId = tonumber(inventory:match('otherplayer%-(.+)'))
-        Player(targetId).state.inv_busy = false
+
+    local session = GetInventorySession(src)
+    if inventory ~= nil and type(inventory) ~= 'string' then
         return
     end
+
+    -- Player-only inventory has no secondary name. If a secondary session does
+    -- exist but the client omitted the name, close the server's real session
+    -- instead of leaving a target/stash/drop locked.
+    if (not inventory or inventory == '') and session then
+        inventory = session.name
+    end
+
+    -- Lua treats the empty string as truthy. The NUI deliberately sends
+    -- name = "" when only the player's own inventory is open, so only a
+    -- non-empty secondary name should be subject to the session guard. An
+    -- empty/nil close is idempotent and must still clear inv_busy.
+    local hasNamedInventory = type(inventory) == 'string' and inventory ~= ''
+
+    if hasNamedInventory and not session then
+        LogInventoryAccessDenied(src, inventory, 'close-no-session')
+        return
+    end
+    if session and hasNamedInventory and session.name ~= inventory then
+        LogInventoryAccessDenied(src, inventory, 'close-session-mismatch')
+        return
+    end
+
+    Player(src).state.inv_busy = false
+    ClearInventorySession(src)
+
+    if type(inventory) ~= 'string' or inventory == '' then return end
+    if inventory:find('^shop%-') then return end
+
+    if inventory:find('^otherplayer%-') then
+        local targetId = tonumber(inventory:match('^otherplayer%-(.+)'))
+        if targetId and QBCore.Functions.GetPlayer(targetId) then
+            Player(targetId).state.inv_busy = false
+        end
+        return
+    end
+
     if Drops[inventory] then
+        if Drops[inventory].isOpen and Drops[inventory].isOpen ~= src then
+            LogInventoryAccessDenied(src, inventory, 'close-drop-not-owner')
+            return
+        end
         Drops[inventory].isOpen = false
-        if GetItemCountInMap(Drops[inventory].items) == 0 and
-            not Drops[inventory].isOpen then
+        if GetItemCountInMap(Drops[inventory].items) == 0 then
             if Config.Debug then
-                print(
-                    ('[INV_DEBUG_SERVER] Drop bag %s is empty, deleting.'):format(
-                        inventory))
+                print(('[INV_DEBUG_SERVER] Drop bag %s is empty, deleting.'):format(inventory))
             end
             TriggerClientEvent('qb-inventory:client:removeDropTarget', -1,
                                Drops[inventory].entityId)
             Wait(500)
-            local entity = NetworkGetEntityFromNetworkId(Drops[inventory]
-                                                             .entityId)
+            local entity = NetworkGetEntityFromNetworkId(Drops[inventory].entityId)
             if DoesEntityExist(entity) then DeleteEntity(entity) end
             Drops[inventory] = nil
-        else
-            if Config.Debug then
-                print(
-                    ('[INV_DEBUG_SERVER] Drop bag %s is not empty (%s items), keeping it.'):format(
-                        inventory, GetItemCountInMap(Drops[inventory].items)))
-            end
+        elseif Config.Debug then
+            print(('[INV_DEBUG_SERVER] Drop bag %s is not empty (%s items), keeping it.'):format(
+                inventory, GetItemCountInMap(Drops[inventory].items)))
         end
         return
     end
+
     if not Inventories[inventory] then return end
+    if Inventories[inventory].isOpen and Inventories[inventory].isOpen ~= src then
+        LogInventoryAccessDenied(src, inventory, 'close-stash-not-owner')
+        return
+    end
     Inventories[inventory].isOpen = false
 
     CreateThread(function()
@@ -284,28 +343,38 @@ end)
 
 RegisterNetEvent('qb-inventory:server:useItem', function(item)
     local src = source
-    local itemData = GetItemBySlot(src, item.slot)
+    if type(item) ~= 'table' then return end
+
+    local slot = tonumber(item.slot)
+    if not slot or slot ~= math.floor(slot) or slot < 1 or slot > Config.MaxSlots then
+        return
+    end
+
+    local itemData = GetItemBySlot(src, slot)
     if not itemData then return end
     if itemData.name == 'cash' then return end
+
     local itemInfo = QBCore.Shared.Items[itemData.name]
-    if itemData.info and itemData.info.expiryDate and os.time() >=
-        itemData.info.expiryDate then
+    if not itemInfo then return end
+    local itemMeta = type(itemData.info) == 'table' and itemData.info or {}
+
+    if itemMeta.expiryDate and os.time() >= itemMeta.expiryDate then
         TriggerClientEvent('QBCore:Notify', src, Lang:t('notify.item_expired'),
                            'error')
         return
     end
+
     if itemData.type == 'weapon' then
         TriggerClientEvent('qb-weapons:client:UseWeapon', src, itemData,
-                           itemData.info.quality and itemData.info.quality > 0)
+                           itemMeta.quality and itemMeta.quality > 0)
         TriggerClientEvent('qb-inventory:client:ItemBox', src, itemInfo, 'use')
     elseif itemData.name == 'id_card' then
         UseItem(itemData.name, src, itemData)
-        TriggerClientEvent('qb-inventory:client:ItemBox', source, itemInfo,
-                           'use')
+        TriggerClientEvent('qb-inventory:client:ItemBox', src, itemInfo, 'use')
         local playerPed = GetPlayerPed(src)
         local playerCoords = GetEntityCoords(playerPed)
         local players = QBCore.Functions.GetPlayers()
-        local gender = item.info.gender == 0 and 'Male' or 'Female'
+        local gender = itemMeta.gender == 0 and 'Male' or 'Female'
         for _, v in pairs(players) do
             local targetPed = GetPlayerPed(v)
             local dist = #(playerCoords - GetEntityCoords(targetPed))
@@ -313,9 +382,9 @@ RegisterNetEvent('qb-inventory:server:useItem', function(item)
                 TriggerClientEvent('chat:addMessage', v, {
                     template = '<div class="chat-message advert" style="background: linear-gradient(to right, rgba(5, 5, 5, 0.6), #74807c); display: flex;"><div style="margin-right: 10px;"><i class="far fa-id-card" style="height: 100%;"></i><strong> {0}</strong><br> <strong>Civ ID:</strong> {1} <br><strong>First Name:</strong> {2} <br><strong>Last Name:</strong> {3} <br><strong>Birthdate:</strong> {4} <br><strong>Gender:</strong> {5} <br><strong>Nationality:</strong> {6}</div></div>',
                     args = {
-                        'ID Card', item.info.citizenid, item.info.firstname,
-                        item.info.lastname, item.info.birthdate, gender,
-                        item.info.nationality
+                        'ID Card', itemMeta.citizenid, itemMeta.firstname,
+                        itemMeta.lastname, itemMeta.birthdate, gender,
+                        itemMeta.nationality
                     }
                 })
             end
@@ -333,8 +402,8 @@ RegisterNetEvent('qb-inventory:server:useItem', function(item)
                 TriggerClientEvent('chat:addMessage', v, {
                     template = '<div class="chat-message advert" style="background: linear-gradient(to right, rgba(5, 5, 5, 0.6), #657175); display: flex;"><div style="margin-right: 10px;"><i class="far fa-id-card" style="height: 100%;"></i><strong> {0}</strong><br> <strong>First Name:</strong> {1} <br><strong>Last Name:</strong> {2} <br><strong>Birth Date:</strong> {3} <br><strong>Licenses:</strong> {4}</div></div>',
                     args = {
-                        'Drivers License', item.info.firstname,
-                        item.info.lastname, item.info.birthdate, item.info.type
+                        'Drivers License', itemMeta.firstname,
+                        itemMeta.lastname, itemMeta.birthdate, itemMeta.type
                     }
                 })
             end
@@ -347,8 +416,9 @@ end)
 
 RegisterNetEvent('qb-inventory:server:openDrop', function(dropId)
     local src = source
+    if type(dropId) ~= 'string' then return end
     local Player = QBCore.Functions.GetPlayer(src)
-    if not Player then return end
+    if not Player or Player(src).state.inv_busy then return end
     local playerPed = GetPlayerPed(src)
     local playerCoords = GetEntityCoords(playerPed)
     local drop = Drops[dropId]
@@ -364,26 +434,112 @@ RegisterNetEvent('qb-inventory:server:openDrop', function(dropId)
         inventory = drop.items
     }
     drop.isOpen = src
+    Player(src).state.inv_busy = true
+    SetInventorySession(src, dropId, 'drop')
     TriggerClientEvent('qb-inventory:client:sendServerTime', source, os.time())
     TriggerClientEvent('qb-inventory:client:openInventory', source,
                        Player.PlayerData.items, formattedInventory)
 end)
 
-RegisterNetEvent('qb-inventory:server:updateDrop',
-                 function(dropId, coords) Drops[dropId].coords = coords end)
-
-RegisterNetEvent('qb-inventory:server:snowball', function(action)
-    if action == 'add' then
-        AddItem(source, 'weapon_snowball', 1, false, false,
-                'qb-inventory:server:snowball')
-    elseif action == 'remove' then
-        RemoveItem(source, 'weapon_snowball', 1, false,
-                   'qb-inventory:server:snowball')
+-- Picking a bag up used to be purely client side, so the server had no idea who
+-- was carrying what. `updateDrop` then took any drop id and any coords from any
+-- client, which let a player teleport every bag on the map to their own feet
+-- (and threw "attempt to index a nil value" on an unknown id). Pickup is now
+-- server-validated and records a carrier, and updateDrop only honours a move
+-- from the player who actually holds that bag.
+QBCore.Functions.CreateCallback('qb-inventory:server:pickupDrop',
+                                function(source, cb, dropId)
+    local src = source
+    if type(dropId) ~= 'string' then
+        cb(false)
+        return
     end
+
+    local Player = QBCore.Functions.GetPlayer(src)
+    local drop = Drops[dropId]
+    if not Player or not drop then
+        cb(false)
+        return
+    end
+
+    if drop.carrier and drop.carrier ~= src and GetPlayerName(drop.carrier) then
+        cb(false)
+        return
+    end
+
+    if drop.isOpen and drop.isOpen ~= src then
+        cb(false)
+        return
+    end
+
+    local dropCoords = NormalizeInventoryCoords(drop.coords)
+    if not dropCoords then
+        cb(false)
+        return
+    end
+
+    local playerCoords = GetEntityCoords(GetPlayerPed(src))
+    if #(playerCoords - dropCoords) > 3.0 then
+        cb(false)
+        return
+    end
+
+    -- Release any bag this player was already carrying.
+    for _, existing in pairs(Drops) do
+        if existing.carrier == src then existing.carrier = nil end
+    end
+
+    drop.carrier = src
+    cb(true)
+end)
+
+RegisterNetEvent('qb-inventory:server:updateDrop', function(dropId, coords)
+    local src = source
+
+    if type(dropId) ~= 'string' then
+        LogInventoryAccessDenied(src, dropId, 'drop-bad-id')
+        return
+    end
+
+    local drop = Drops[dropId]
+    if not drop then
+        LogInventoryAccessDenied(src, dropId, 'drop-unknown')
+        return
+    end
+
+    if drop.carrier ~= src then
+        LogInventoryAccessDenied(src, dropId, 'drop-not-carrier')
+        return
+    end
+
+    local newCoords = NormalizeInventoryCoords(coords)
+    if not newCoords then
+        LogInventoryAccessDenied(src, dropId, 'drop-bad-coords')
+        return
+    end
+
+    -- A bag is set down at the carrier's feet, so the reported position has to
+    -- agree with where the server thinks that player actually is.
+    local playerCoords = GetEntityCoords(GetPlayerPed(src))
+    if #(playerCoords - newCoords) > 5.0 then
+        LogInventoryAccessDenied(src, dropId, 'drop-coords-mismatch')
+        return
+    end
+
+    drop.coords = newCoords
+    drop.carrier = nil
 end)
 
 QBCore.Functions.CreateCallback('qb-inventory:server:GetCurrentDrops',
-                                function(_, cb) cb(Drops) end)
+                                function(_, cb)
+    local publicDrops = {}
+    for dropName, drop in pairs(Drops) do
+        if drop and drop.entityId then
+            publicDrops[dropName] = { entityId = drop.entityId }
+        end
+    end
+    cb(publicDrops)
+end)
 
 QBCore.Functions.CreateCallback('qb-inventory:server:createDrop',
                                 function(source, cb, item)
@@ -520,6 +676,9 @@ QBCore.Functions.CreateCallback('qb-inventory:server:createDrop',
         TriggerClientEvent('qb-inventory:client:setupDropTarget', -1, dropId)
     end
 
+    Drops[newDropId].isOpen = src
+    SetInventorySession(src, newDropId, 'drop')
+
     local responseData = {
         netId = dropId,
         dropData = {
@@ -537,40 +696,50 @@ end)
 
 QBCore.Functions.CreateCallback('qb-inventory:server:attemptPurchase',
                                 function(source, cb, data)
-    local itemInfo = data.item
-    local amount = data.amount
-    local shop = string.gsub(data.shop, 'shop%-', '')
+    if type(data) ~= 'table' or type(data.shop) ~= 'string' or
+        type(data.item) ~= 'table' then
+        cb(false)
+        return
+    end
+
+    local amount = tonumber(data.amount)
+    local slot = tonumber(data.item.slot)
+    if not amount or amount ~= math.floor(amount) or amount <= 0 or
+        not slot or slot ~= math.floor(slot) or slot <= 0 then
+        cb(false)
+        return
+    end
+
+    local shopInventoryName = data.shop
+    if shopInventoryName:find('^shop%-') ~= 1 then
+        cb(false)
+        return
+    end
+
+    local allowed, reason = CanAccessInventory(source, shopInventoryName)
+    if not allowed then
+        LogInventoryAccessDenied(source, shopInventoryName,
+                                 'purchase-' .. tostring(reason))
+        cb(false)
+        return
+    end
+
+    local shop = shopInventoryName:gsub('^shop%-', '')
     local Player = QBCore.Functions.GetPlayer(source)
-
-    if not Player then
-        cb(false)
-        return
-    end
-
     local shopInfo = RegisteredShops[shop]
-    if not shopInfo then
+    if not Player or not shopInfo then
         cb(false)
         return
     end
 
-    local playerPed = GetPlayerPed(source)
-    local playerCoords = GetEntityCoords(playerPed)
-    if shopInfo.coords then
-        local shopCoords = vector3(shopInfo.coords.x, shopInfo.coords.y,
-                                   shopInfo.coords.z)
-        if #(playerCoords - shopCoords) > 10 then
-            cb(false)
-            return
-        end
-    end
-
-    local shopItem = shopInfo.items[itemInfo.slot]
-    if not shopItem or shopItem.name ~= itemInfo.name then
+    local shopItem = shopInfo.items[slot]
+    if not shopItem or type(shopItem.name) ~= 'string' then
         cb(false)
         return
     end
 
-    if amount > shopItem.amount then
+    local stock = tonumber(shopItem.amount) or 0
+    if amount > stock then
         TriggerClientEvent('QBCore:Notify', source,
                            'Cannot purchase larger quantity than currently in stock',
                            'error')
@@ -584,26 +753,25 @@ QBCore.Functions.CreateCallback('qb-inventory:server:attemptPurchase',
         return
     end
 
-    local price = shopItem.price * amount
-    local canPay = false
-
-    if price == 0 then
-        canPay = true
-    else
-        -- Use the shared helper so cash-as-item and normal QBCore cash stay in one place.
-        canPay = RemoveCash(source, price, 'shop-purchase')
+    local unitPrice = tonumber(shopItem.price) or 0
+    if unitPrice < 0 then
+        cb(false)
+        return
     end
+    local price = unitPrice * amount
+    local canPay = price == 0 or RemoveCash(source, price, 'shop-purchase')
 
     if canPay then
-        -- Use the registered shop item as the source of truth.
-        -- This keeps pre-built weapon-store metadata like info.attachments intact even if the NUI payload omits/changes info.
-        local purchaseInfo = CopyTable(shopItem.info or itemInfo.info or {})
+        -- Price, item identity and metadata all come from the registered
+        -- server-side shop entry; the browser is not authoritative here.
+        local purchaseInfo = CopyTable(shopItem.info or {})
 
         if AddItem(source, shopItem.name, amount, nil, purchaseInfo,
                    'shop-purchase') then
             TriggerEvent('qb-shops:server:UpdateShopItems', shop, shopItem,
                          amount)
-            TriggerClientEvent('qb-inventory:client:updateInventory', source, Player.PlayerData.items)
+            TriggerClientEvent('qb-inventory:client:updateInventory', source,
+                               Player.PlayerData.items)
             cb(true)
         else
             if price > 0 then
@@ -623,22 +791,22 @@ end)
 
 QBCore.Functions.CreateCallback('qb-inventory:server:giveItem',
                                 function(source, cb, data, legacyItemName, legacyAmount, legacySlot, legacyInfo)
-    -- Accept both qb-inventory-rework payloads and older custom UI callback arguments.
+    -- Accept both qb-inventory-rework payloads and older custom UI callback
+    -- arguments, but never trust the browser for item identity or metadata.
     if type(data) ~= 'table' then
         data = {
             targetId = data,
-            item = { name = legacyItemName, info = legacyInfo or {} },
             amount = legacyAmount,
             slot = legacySlot,
         }
     end
-    data.item = data.item or { name = data.itemName, info = data.info or {} }
 
     local player = QBCore.Functions.GetPlayer(source)
     local targetId = tonumber(data.targetId)
     local Target = QBCore.Functions.GetPlayer(targetId)
 
-    if not player or player.PlayerData.metadata['isdead'] or
+    if not player or not targetId or targetId == source or
+        player.PlayerData.metadata['isdead'] or
         player.PlayerData.metadata['inlaststand'] or
         player.PlayerData.metadata['ishandcuffed'] then
         cb(false)
@@ -651,6 +819,7 @@ QBCore.Functions.CreateCallback('qb-inventory:server:giveItem',
         cb(false)
         return
     end
+
     local pCoords = GetEntityCoords(GetPlayerPed(source))
     local tCoords = GetEntityCoords(GetPlayerPed(targetId))
     if #(pCoords - tCoords) > 5.0 then
@@ -658,18 +827,31 @@ QBCore.Functions.CreateCallback('qb-inventory:server:giveItem',
         return
     end
 
-    local item = data.item and data.item.name
     local amount = tonumber(data.amount)
-    local slot = data.slot
-    local info = (data.item and data.item.info) or data.info or {}
-    local itemInfo = QBCore.Shared.Items[item:lower()]
-
-    if not itemInfo or not HasItem(source, item, amount) then
+    local slot = tonumber(data.slot)
+    if not amount or amount ~= math.floor(amount) or amount <= 0 or
+        not slot or slot ~= math.floor(slot) or slot < 1 or slot > Config.MaxSlots then
         cb(false)
         return
     end
 
-    if RemoveItem(source, item, amount, slot, 'Item given to ID #' .. targetId) then
+    local serverItem = player.PlayerData.items and player.PlayerData.items[slot]
+    if not serverItem or type(serverItem.name) ~= 'string' or
+        amount > (tonumber(serverItem.amount) or 0) then
+        cb(false)
+        return
+    end
+
+    local item = serverItem.name:lower()
+    local itemInfo = QBCore.Shared.Items[item]
+    if not itemInfo then
+        cb(false)
+        return
+    end
+    local info = CopyTable(serverItem.info or {})
+
+    if RemoveItem(source, item, amount, slot,
+                  'Item given to ID #' .. targetId) then
         if AddItem(targetId, item, amount, false, info,
                    'Item received from ID #' .. source) then
             if itemInfo.type == 'weapon' then
@@ -677,11 +859,7 @@ QBCore.Functions.CreateCallback('qb-inventory:server:giveItem',
             end
 
             TriggerClientEvent('qb-inventory:client:giveAnim', source)
-            TriggerClientEvent('qb-inventory:client:ItemBox', source, itemInfo,
-                               'remove', amount)
             TriggerClientEvent('qb-inventory:client:giveAnim', targetId)
-            TriggerClientEvent('qb-inventory:client:ItemBox', targetId,
-                               itemInfo, 'add', amount)
 
             if Player(targetId).state.inv_busy then
                 TriggerClientEvent('qb-inventory:client:updateInventory',
@@ -808,6 +986,20 @@ end
 
 QBCore.Functions.CreateCallback('qb-inventory:server:getInventorySnapshot',
                                 function(source, cb, otherInventoryName)
+    if otherInventoryName ~= nil then
+        if type(otherInventoryName) ~= 'string' then
+            cb(false)
+            return
+        end
+        local allowed, reason = CanAccessInventory(source, otherInventoryName)
+        if not allowed then
+            LogInventoryAccessDenied(source, otherInventoryName,
+                                     'snapshot-' .. tostring(reason))
+            cb(false)
+            return
+        end
+    end
+
     cb(BuildInventorySnapshot(source, otherInventoryName, true))
 end)
 
@@ -870,6 +1062,41 @@ RegisterNetEvent('qb-inventory:server:SetInventoryData',
                                                      tonumber(toSlot),
                                                      tonumber(fromAmount),
                                                      tonumber(toAmount)
+
+            -- Access control. Everything below this point reads and writes real
+            -- inventories, so the caller has to prove they may touch both ends of
+            -- the move before getItem() is allowed to resolve anything.
+            --
+            -- Without this a single client event drained any online player, any
+            -- drop or any cached stash:
+            --     TriggerServerEvent('qb-inventory:server:SetInventoryData',
+            --                        'otherplayer-7', 'player', 1, 1, 999, 999, 'x')
+            if not IsValidMoveAmount(toAmount) then
+                LogInventoryAccessDenied(src, toInventory, 'bad-amount')
+                return
+            end
+
+            if not IsValidSlot(fromSlot, GetInventorySlotCount(fromInventory)) then
+                LogInventoryAccessDenied(src, fromInventory, 'bad-from-slot')
+                return
+            end
+
+            if not IsValidSlot(toSlot, GetInventorySlotCount(toInventory)) then
+                LogInventoryAccessDenied(src, toInventory, 'bad-to-slot')
+                return
+            end
+
+            local canFrom, fromReason = CanAccessInventory(src, fromInventory)
+            if not canFrom then
+                LogInventoryAccessDenied(src, fromInventory, fromReason)
+                return
+            end
+
+            local canTo, toReason = CanAccessInventory(src, toInventory)
+            if not canTo then
+                LogInventoryAccessDenied(src, toInventory, toReason)
+                return
+            end
 
             local fromItem = getItem(fromInventory, src, fromSlot)
             local toItem = getItem(toInventory, src, toSlot)
@@ -1061,11 +1288,54 @@ RegisterNetEvent('qb-inventory:server:SetInventoryData',
                         local canAddTo, reasonTo = CanAddItem(toId, fromItem.name, serverFromAmount)
                         local canAddFrom, reasonFrom = CanAddItem(fromId, toItem.name, toItemAmount)
                         if canAddTo and canAddFrom then
-                            if RemoveItem(fromId, fromItem.name, serverFromAmount, fromSlot, 'swapped item') and
-                                RemoveItem(toId, toItem.name, toItemAmount, toSlot, 'swapped item') then
-                                local addedTo = AddItem(toId, fromItem.name, serverFromAmount, toSlot, fromItem.info, 'swapped item')
-                                local addedFrom = AddItem(fromId, toItem.name, toItemAmount, fromSlot, toItem.info, 'swapped item')
-                                moveCompleted = addedTo == true and addedFrom == true
+                            local removedFrom = RemoveItem(fromId, fromItem.name,
+                                                           serverFromAmount, fromSlot,
+                                                           'swapped item')
+                            if removedFrom then
+                                local removedTo = RemoveItem(toId, toItem.name,
+                                                            toItemAmount, toSlot,
+                                                            'swapped item')
+                                if not removedTo then
+                                    AddItem(fromId, fromItem.name, serverFromAmount,
+                                            fromSlot, fromItem.info,
+                                            'swap-remove-rollback')
+                                else
+                                    local addedTo = AddItem(toId, fromItem.name,
+                                                            serverFromAmount, toSlot,
+                                                            fromItem.info,
+                                                            'swapped item')
+                                    if not addedTo then
+                                        AddItem(toId, toItem.name, toItemAmount,
+                                                toSlot, toItem.info,
+                                                'swap-add-rollback')
+                                        AddItem(fromId, fromItem.name,
+                                                serverFromAmount, fromSlot,
+                                                fromItem.info,
+                                                'swap-add-rollback')
+                                    else
+                                        local addedFrom = AddItem(fromId,
+                                                                  toItem.name,
+                                                                  toItemAmount,
+                                                                  fromSlot,
+                                                                  toItem.info,
+                                                                  'swapped item')
+                                        if addedFrom then
+                                            moveCompleted = true
+                                        else
+                                            RemoveItem(toId, fromItem.name,
+                                                       serverFromAmount, toSlot,
+                                                       'swap-final-rollback')
+                                            AddItem(toId, toItem.name,
+                                                    toItemAmount, toSlot,
+                                                    toItem.info,
+                                                    'swap-final-rollback')
+                                            AddItem(fromId, fromItem.name,
+                                                    serverFromAmount, fromSlot,
+                                                    fromItem.info,
+                                                    'swap-final-rollback')
+                                        end
+                                    end
+                                end
                             end
                         else
                             if Config.Debug then
@@ -1154,18 +1424,44 @@ end
 --                   PLAYER SEARCH FEATURE (ROB)
 -- =================================================================
 
+-- Robbery is a three-step handshake and every step used to be advisory. The
+-- hands-up check, the 5 second progress bar and the dead check all ran on the
+-- client, so triggering `qb-inventory:server:robPlayer` directly skipped the lot
+-- and opened the target's inventory instantly.
+--
+-- The server now issues a single-use token in initiateRob, promotes it only when
+-- the victim (or the server's own dead check) says the target is robbable, and
+-- robPlayer refuses to do anything without a live token that it consumes.
+PendingRobberies = {}
+
+local ROBBERY_HANDSHAKE_TIMEOUT = 10   -- seconds to answer the hands-up probe
+local ROBBERY_TOKEN_TIMEOUT     = 15   -- seconds to finish the progress bar
+local ROBBERY_DISTANCE          = 3.0
+
+local function ClearRobbery(robberId)
+    PendingRobberies[robberId] = nil
+end
+
+local function RobberyDistanceOk(robberId, targetId)
+    local robberPed = GetPlayerPed(robberId)
+    local targetPed = GetPlayerPed(targetId)
+    if not robberPed or not targetPed or robberPed == 0 or targetPed == 0 then
+        return false
+    end
+    return #(GetEntityCoords(robberPed) - GetEntityCoords(targetPed)) <= ROBBERY_DISTANCE
+end
+
 RegisterNetEvent('robbery:server:initiateRob', function(targetId)
     local src = source
+    targetId = tonumber(targetId)
+    if not targetId or targetId == src then return end
+
     local RobberPlayer = QBCore.Functions.GetPlayer(src)
     local TargetPlayer = QBCore.Functions.GetPlayer(targetId)
 
     if not RobberPlayer or not TargetPlayer then return end
 
-    local robberPed = GetPlayerPed(src)
-    local targetPed = GetPlayerPed(targetId)
-    local distance = #(GetEntityCoords(robberPed) - GetEntityCoords(targetPed))
-
-    if distance > 3.0 then
+    if not RobberyDistanceOk(src, targetId) then
         TriggerClientEvent('QBCore:Notify', src, 'Target is too far away.',
                            'error')
         return
@@ -1177,35 +1473,83 @@ RegisterNetEvent('robbery:server:initiateRob', function(targetId)
     end
 
     if TargetPlayer.PlayerData.metadata['isdead'] then
+        -- A dead target is verified server side, so the token is live immediately.
+        PendingRobberies[src] = {
+            target = targetId,
+            stage = 'approved',
+            expires = os.time() + ROBBERY_TOKEN_TIMEOUT
+        }
         TriggerClientEvent('robbery:client:startRobberyProgress', src, targetId)
         return
     end
+
+    PendingRobberies[src] = {
+        target = targetId,
+        stage = 'checking',
+        expires = os.time() + ROBBERY_HANDSHAKE_TIMEOUT
+    }
 
     TriggerClientEvent('robbery:client:checkIfHandsUp', targetId, src)
 end)
 
 RegisterNetEvent('robbery:server:handsUpResult', function(robberId, isHandsUp)
     local targetId = source
-    if isHandsUp then
-        TriggerClientEvent('robbery:client:startRobberyProgress', robberId,
-                           targetId)
-    else
+    robberId = tonumber(robberId)
+    if not robberId then return end
+
+    -- Only the player actually being probed may answer, and only for the robber
+    -- the server paired them with.
+    local pending = PendingRobberies[robberId]
+    if not pending or pending.stage ~= 'checking' or pending.target ~= targetId then
+        LogInventoryAccessDenied(targetId, 'otherplayer-' .. tostring(robberId),
+                                 'robbery-no-handshake')
+        return
+    end
+
+    if os.time() > pending.expires then
+        ClearRobbery(robberId)
+        return
+    end
+
+    if not isHandsUp then
+        ClearRobbery(robberId)
         TriggerClientEvent('QBCore:Notify', robberId,
                            'Target does not have their hands up.', 'error')
+        return
     end
+
+    pending.stage = 'approved'
+    pending.expires = os.time() + ROBBERY_TOKEN_TIMEOUT
+    TriggerClientEvent('robbery:client:startRobberyProgress', robberId, targetId)
 end)
 
 RegisterNetEvent('qb-inventory:server:robPlayer', function(targetId)
     local src = source
+    targetId = tonumber(targetId)
+    if not targetId then return end
+
+    -- The token is the gate. No token, no robbery, however this event was fired.
+    local pending = PendingRobberies[src]
+    if not pending or pending.stage ~= 'approved' or pending.target ~= targetId then
+        LogInventoryAccessDenied(src, 'otherplayer-' .. tostring(targetId),
+                                 'robbery-no-token')
+        return
+    end
+
+    if os.time() > pending.expires then
+        ClearRobbery(src)
+        TriggerClientEvent('QBCore:Notify', src, 'The search took too long.', 'error')
+        return
+    end
+
+    -- Single use: consumed here whether or not the checks below pass.
+    ClearRobbery(src)
+
     local RobberPlayer = QBCore.Functions.GetPlayer(src)
     local TargetPlayer = QBCore.Functions.GetPlayer(targetId)
     if not RobberPlayer or not TargetPlayer then return end
 
-    local robberPed = GetPlayerPed(src)
-    local targetPed = GetPlayerPed(targetId)
-    local distance = #(GetEntityCoords(robberPed) - GetEntityCoords(targetPed))
-
-    if distance > 3.0 then
+    if not RobberyDistanceOk(src, targetId) then
         TriggerClientEvent('QBCore:Notify', src, 'Target is too far away.', 'error')
         return
     end
@@ -1230,8 +1574,25 @@ RegisterNetEvent('qb-inventory:server:robPlayer', function(targetId)
         TriggerClientEvent('qb-inventory:client:beingRobbed', targetId)
     end
 
-    OpenInventoryById(src, targetId)
+    if not OpenInventoryById(src, targetId) then
+        TriggerClientEvent('QBCore:Notify', src,
+                           'This person is busy.', 'error')
+        return
+    end
     TriggerClientEvent('QBCore:Notify', targetId, 'You are being searched!', 'error', 7500)
     TriggerClientEvent('QBCore:Notify', src, 'You started searching ' .. GetPlayerName(targetId), 'success', 7500)
+end)
+
+AddEventHandler('playerDropped', function()
+    local src = source
+    lastVendingOpen[src] = nil
+    PendingRobberies[src] = nil
+    -- Drop any token naming this player as the victim, and release bags they held.
+    for robberId, pending in pairs(PendingRobberies) do
+        if pending.target == src then PendingRobberies[robberId] = nil end
+    end
+    for _, drop in pairs(Drops) do
+        if drop.carrier == src then drop.carrier = nil end
+    end
 end)
 
