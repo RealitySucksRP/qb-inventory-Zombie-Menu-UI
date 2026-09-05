@@ -1,0 +1,34 @@
+name: Apply RS source update
+on:
+  push:
+    branches: [source-update-zombie-v3.0.2-final]
+    paths: ['.rs-update/READY']
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: source-update-zombie-v3.0.2-final
+          fetch-depth: 0
+      - name: Reconstruct verified overlay
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .rs-update/chunk-*.txt | base64 -d > /tmp/rs-overlay.tgz
+          echo "4a45d92262ece77cd134ebb3888bb8f27580d36c5751b48f7357db5dce4de6a9  /tmp/rs-overlay.tgz" | sha256sum -c -
+          tar -xzf /tmp/rs-overlay.tgz -C .
+      - name: Remove temporary updater
+        run: |
+          rm -rf .rs-update
+          rm -f .github/workflows/apply-rs-source.yml
+      - name: Commit source update
+        shell: bash
+        run: |
+          git config user.name "RealitySucksRP"
+          git config user.email "williamb1982@live.com"
+          git add -A
+          git commit -m "Update Zombie inventory to v3.0.2" || exit 0
+          git push origin HEAD:source-update-zombie-v3.0.2-final
