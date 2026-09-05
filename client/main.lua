@@ -530,13 +530,6 @@ RegisterNetEvent('qb-inventory:client:ItemBox', function(itemData, type, amount)
     })
 end)
 
-RegisterNetEvent('qb-inventory:server:RobPlayer', function(TargetId)
-    SendNUIMessage({
-        action = 'RobMoney',
-        TargetId = TargetId,
-    })
-end)
-
 RegisterNetEvent('qb-inventory:client:openInventory', function(items, other)
     ToggleHUD(false)
     SetNuiFocus(true, true)
@@ -573,15 +566,18 @@ RegisterNUICallback('CloseInventory', function(data, cb)
     SetNuiFocus(false, false)
     TriggerScreenblurFadeOut(250)
 
-    if data.name then
-        if data.name:find('trunk-') then
-            CloseTrunk()
-        end
-        TriggerServerEvent('qb-inventory:server:closeInventory', data.name)
-    elseif CurrentDrop then
-        TriggerServerEvent('qb-inventory:server:closeInventory', CurrentDrop)
-        CurrentDrop = nil
+    local inventoryName = data and data.name or nil
+    if inventoryName and inventoryName:find('trunk-') then
+        CloseTrunk()
     end
+    if not inventoryName and CurrentDrop then
+        inventoryName = CurrentDrop
+    end
+
+    -- Always close the server-side session. Player-only inventory has no
+    -- secondary name, but still sets inv_busy on the server.
+    TriggerServerEvent('qb-inventory:server:closeInventory', inventoryName)
+    CurrentDrop = nil
     cb('ok')
 end)
 
@@ -840,9 +836,9 @@ end)
 -- =================================================================
 
 CreateThread(function()
-    while not exports['qb-target'] do Wait(100) end
-    
-    exports['qb-target']:AddTargetEntity(GetGamePool('CPed'), {
+    while GetResourceState('qb-target') ~= 'started' do Wait(250) end
+
+    exports['qb-target']:AddGlobalPlayer({
         options = {
             {
                 icon = 'fa-solid fa-person-circle-question',
