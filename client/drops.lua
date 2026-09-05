@@ -92,22 +92,28 @@ RegisterNetEvent('qb-inventory:client:setupDropTarget', function(dropId)
                     if HoldingDrop then
                         return QBCore.Functions.Notify("Your already holding a bag, Go Drop it!", "error", 5500)
                     end
-                    AttachEntityToEntity(
-                        bag,
-                        PlayerPedId(),
-                        GetPedBoneIndex(PlayerPedId(), Config.ItemDropObjectBone),
-                        Config.ItemDropObjectOffset[1].x,
-                        Config.ItemDropObjectOffset[1].y,
-                        Config.ItemDropObjectOffset[1].z,
-                        Config.ItemDropObjectOffset[2].x,
-                        Config.ItemDropObjectOffset[2].y,
-                        Config.ItemDropObjectOffset[2].z,
-                        true, true, false, true, 1, true
-                    )
-                    bagObject = bag
-                    HoldingDrop = true
-                    heldDrop = newDropId
-                    exports['qb-core']:DrawText('Press [G] to drop the bag')
+                    QBCore.Functions.TriggerCallback('qb-inventory:server:pickupDrop', function(allowed)
+                        if not allowed then
+                            return QBCore.Functions.Notify("You can not pick up that bag.", "error", 3500)
+                        end
+                        if HoldingDrop then return end
+                        AttachEntityToEntity(
+                            bag,
+                            PlayerPedId(),
+                            GetPedBoneIndex(PlayerPedId(), Config.ItemDropObjectBone),
+                            Config.ItemDropObjectOffset[1].x,
+                            Config.ItemDropObjectOffset[1].y,
+                            Config.ItemDropObjectOffset[1].z,
+                            Config.ItemDropObjectOffset[2].x,
+                            Config.ItemDropObjectOffset[2].y,
+                            Config.ItemDropObjectOffset[2].z,
+                            true, true, false, true, 1, true
+                        )
+                        bagObject = bag
+                        HoldingDrop = true
+                        heldDrop = newDropId
+                        exports['qb-core']:DrawText('Press [G] to drop the bag')
+                    end, newDropId)
                 end,
             }
         },
@@ -147,8 +153,14 @@ end)
 
 CreateThread(function()
     while true do
+        -- Only poll per frame while a bag is actually in hand.
+        if not HoldingDrop then
+            Wait(500)
+            goto continue
+        end
+
         Wait(0)
-        if HoldingDrop and IsControlJustPressed(0, 47) then
+        if IsControlJustPressed(0, 47) then
             local playerPed = PlayerPedId()
             if IsPedInAnyVehicle(playerPed, false) then
                 QBCore.Functions.Notify("You cannot drop a bag while in a vehicle.", "error", 3500)
@@ -166,5 +178,7 @@ CreateThread(function()
                 heldDrop = nil
             end
         end
+
+        ::continue::
     end
 end)
