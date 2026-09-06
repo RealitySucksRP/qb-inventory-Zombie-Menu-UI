@@ -1,0 +1,49 @@
+name: Apply Zombie v3.0.3 reupload
+
+on:
+  push:
+    branches:
+      - reupload-zombie-v3.0.3
+    paths:
+      - '.github/workflows/apply-zombie-reupload-v3.0.3.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: reupload-zombie-v3.0.3
+          fetch-depth: 0
+
+      - name: Reconstruct and verify source overlay
+        run: |
+          cat \
+            .rs-update/fix00-0.txt \
+            .rs-update/fix00-1.txt \
+            .rs-update/fix00-2.txt \
+            .rs-update/chunk-01.txt \
+            .rs-update/chunk-02.txt \
+            .rs-update/chunk-03.txt \
+            .rs-update/fix04-0.txt \
+            .rs-update/fix04-1.txt \
+            .rs-update/fix04-2.txt \
+            .rs-update/chunk-05.txt \
+            .rs-update/chunk-06.txt \
+            > /tmp/zombie-overlay.b64
+          base64 -d /tmp/zombie-overlay.b64 > /tmp/zombie-overlay.tgz
+          echo "87c12bd69df5f35642f69e22d62c899f6d3a139ee09eba62595a6c50f700052b  /tmp/zombie-overlay.tgz" | sha256sum -c -
+          tar -xzf /tmp/zombie-overlay.tgz -C .
+
+      - name: Remove temporary transfer files and commit
+        run: |
+          rm -rf .rs-update
+          rm -f .github/workflows/apply-zombie-reupload-v3.0.3.yml
+          git config user.name "RealitySucksRP Update Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git commit -m "Update RS Zombie Inventory to v3.0.3"
+          git push origin HEAD:reupload-zombie-v3.0.3
