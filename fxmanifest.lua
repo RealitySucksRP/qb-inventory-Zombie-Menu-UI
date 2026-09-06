@@ -2,7 +2,7 @@ fx_version 'cerulean'
 game 'gta5'
 author 'Reality Sucks RP / APCode'
 description 'Server-authoritative QBCore inventory with the RealitySucksRP zombie UI.'
-version '3.0.2'
+version '3.0.3-cash-death-guard'
 
 dependencies {
 'qb-core',

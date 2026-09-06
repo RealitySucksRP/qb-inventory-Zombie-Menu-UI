@@ -7,8 +7,8 @@ QBCore.Commands.Add('giveitem', 'Give An Item (Admin Only)', { { name = 'id', he
     local player = QBCore.Functions.GetPlayer(id)
     local itemName = tostring(args[2]):lower()
     local amount = tonumber(args[3]) or 1
-    if itemName == 'cash' then
-        QBCore.Functions.Notify(source, 'Spawning "cash" as an item is not allowed. Use /givemoney instead.', 'error', 7500)
+    if itemName == (Config.CashItemName or 'cash') then
+        QBCore.Functions.Notify(source, ('Spawning "%s" as an item is not allowed. Use /givemoney instead.'):format(Config.CashItemName or 'cash'), 'error', 7500)
         return
     end
 

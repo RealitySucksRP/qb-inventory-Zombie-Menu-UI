@@ -55,6 +55,26 @@ const InventoryContainer = Vue.createApp({
         },
     },
     methods: {
+        /* ------------------------------------------------------------
+           WEIGHT DISPLAY — pounds.
+           ------------------------------------------------------------
+           Every weight in this resource is stored and calculated in GRAMS:
+           item weights, Config.MaxWeight, StashSize/DropSize maxweight, the
+           CanAddItem check in server/functions.lua, and the ps_lib bridge all
+           speak grams. None of that changes -- this converts at the point of
+           display only, so capacity, stacking and transfer limits behave
+           exactly as before.
+
+           1 lb = 453.59237 g exactly. Config.MaxWeight is 120000 g, so the bar
+           reads 264.6 LBS -- the same carrying capacity it always was, just
+           named in the unit you use.
+           ------------------------------------------------------------ */
+        gramsToLbs(grams, decimals) {
+            const n = Number(grams);
+            if (!Number.isFinite(n)) return "0.0";
+            return (n / 453.59237).toFixed(decimals === undefined ? 1 : decimals);
+        },
+
         formatItemAmount(item) {
             if (!item) return "";
             const amount = Math.max(0, Math.floor(Number(item.amount) || 0));
@@ -1029,7 +1049,7 @@ const InventoryContainer = Vue.createApp({
             }
 
             content += `<div class="tooltip-description">${description}</div>`;
-            content += `<div class="tooltip-weight"><i class="fas fa-weight-hanging"></i> ${item.weight !== undefined && item.weight !== null ? (item.weight / 1000).toFixed(1) : "N/A"}kg</div>`;
+            content += `<div class="tooltip-weight"><i class="fas fa-weight-hanging"></i> ${item.weight !== undefined && item.weight !== null ? this.gramsToLbs(item.weight, 2) : "N/A"} lbs</div>`;
 
             content += `</div>`;
             return content;
