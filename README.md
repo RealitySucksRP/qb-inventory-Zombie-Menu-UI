@@ -3,12 +3,12 @@
 </p>
 
 <p align="center">
-  <a href="https://ko-fi.com/R6R51XYJ6N">
-    <img src="https://img.shields.io/badge/Support%20me%20on%20Ko--fi-72A4F2?logo=ko-fi&logoColor=white" alt="Support me on Ko-fi">
-  </a>
+  <a href="https://reality-sucks-rp-webstore.tebex.io/package/7506318"><img src="https://img.shields.io/badge/GET%20IT%20FREE-TEBEX-ff6a00?style=for-the-badge" alt="Get RS Zombie Inventory on Tebex"></a>
+  <a href="https://reality-sucks-rp-webstore.tebex.io/category/zombie-core"><img src="https://img.shields.io/badge/EXPLORE-ZOMBIE%20CORE-1f6f43?style=for-the-badge" alt="Explore the RealitySucksRP ZombieCore ecosystem"></a>
+  <a href="https://reality-sucks-rp-webstore.tebex.io/"><img src="https://img.shields.io/badge/BROWSE-FULL%20STORE-111111?style=for-the-badge" alt="Browse RealitySucksRP Tebex Store"></a>
 </p>
 
-CHECK OUT MY TEBEX STORE: https://reality-sucks-rp-webstore.tebex.io/
+> I build my own FiveM scripts and complete server setups: zombie apocalypse systems, shops, weapons, phones, racing, customs, garages, dealerships, warfare, Phantom encounters, UI and more. My resources are tested in my own server builds and can be configured around the server owner's setup.
 
 # 🧟 RealitySucksRP Zombie Inventory
 
