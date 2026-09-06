@@ -7,6 +7,24 @@ Drops = {}
 RegisteredShops = {}
 local saveCounters = {}
 local activeDropRequests = {}
+
+-- Per-player inventory mutex, shared with cash_sync.lua.
+--
+-- SetInventoryData (drag/drop moves between inventories) and cash_sync's
+-- reconciliation (SetPhysicalCashTotal) both write Player.PlayerData.items
+-- directly, and neither knew about the other. createDrop already had its own
+-- lock (activeDropRequests) against being called twice for the same player;
+-- SetInventoryData had none at all, and cash_sync's direct item-table
+-- overwrite (bypassing AddItem/RemoveItem, and any lock those imply) could
+-- run at any moment a money-change event fires elsewhere on the server --
+-- unrelated to what the player is doing, and deferred via SetTimeout(0), so
+-- it can land in the middle of a live drag-and-drop. That is a real window
+-- for a cash item to be counted twice: once by the player's own move, once
+-- by a reconciliation that read the table before the move committed.
+--
+-- GLOBAL (no `local`) so cash_sync.lua, in the same resource but a
+-- different file, can see and respect it.
+RSInventoryBusy = RSInventoryBusy or {}
 local completedDropRequests = {}
 local lastVendingOpen = {}
 local SAVE_DELAY = 2500 -- save timer in milliseconds
@@ -43,6 +61,7 @@ function SanitizeInventory(items)
 end
 
 exports('IsCashAsItem', function() return Config.CashAsItem end)
+exports('GetCashItemName', function() return Config.CashItemName or 'cash' end)
 
 local function CopyTable(tbl)
     if type(tbl) ~= 'table' then return tbl end
@@ -93,6 +112,7 @@ AddEventHandler('QBCore:Server:PlayerUnloaded', function(source)
     if saveCounters[source] then saveCounters[source] = nil end
     activeDropRequests[source] = nil
     completedDropRequests[source] = nil
+    RSInventoryBusy[source] = nil
     lastVendingOpen[source] = nil
     SaveInventory(source)
 
@@ -352,7 +372,7 @@ RegisterNetEvent('qb-inventory:server:useItem', function(item)
 
     local itemData = GetItemBySlot(src, slot)
     if not itemData then return end
-    if itemData.name == 'cash' then return end
+    if itemData.name == (Config.CashItemName or 'cash') then return end
 
     local itemInfo = QBCore.Shared.Items[itemData.name]
     if not itemInfo then return end
@@ -562,10 +582,20 @@ QBCore.Functions.CreateCallback('qb-inventory:server:createDrop',
         cb(false)
         return
     end
+    -- Also block on the shared inventory mutex: this creates a new item
+    -- (removed from the player, moved into a fresh Drop) and must not overlap
+    -- with a concurrent SetInventoryData move or a cash-item reconciliation
+    -- touching the same player's item table.
+    if RSInventoryBusy[src] then
+        cb(false)
+        return
+    end
     activeDropRequests[src] = true
+    RSInventoryBusy[src] = true
 
     local function finish(response)
         activeDropRequests[src] = nil
+        RSInventoryBusy[src] = nil
 
         if response and operationId ~= '' then
             completedDropRequests[src][operationId] = CopyTable(response)
@@ -1007,6 +1037,16 @@ RegisterNetEvent('qb-inventory:server:SetInventoryData',
                  function(fromInventory, toInventory, fromSlot, toSlot,
                           fromAmount, toAmount, requestId)
     local src = source
+
+    -- Reject a second move for this player while one is still in flight. The
+    -- client already guards this with inventoryActionPending, but that is a UI
+    -- nicety a lagged/duplicate network request or a modified client can bypass
+    -- outright; this is the actual backstop. Also shared with cash_sync.lua,
+    -- so a cash-item reconciliation triggered by an unrelated money change
+    -- cannot land in the middle of this player's own drag-and-drop.
+    if RSInventoryBusy[src] then return end
+    RSInventoryBusy[src] = true
+
     local otherInventoryName
     local robberyTargetId
     local robberyItemName
@@ -1406,6 +1446,8 @@ RegisterNetEvent('qb-inventory:server:SetInventoryData',
                            BuildInventorySnapshot(src, otherInventoryName, ok,
                                                   not ok and tostring(err) or nil))
     end
+
+    RSInventoryBusy[src] = nil
 end)
 
 function ScheduleSave(source)

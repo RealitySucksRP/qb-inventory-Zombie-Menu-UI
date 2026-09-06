@@ -12,6 +12,12 @@ local cashState = {}
 local warnedMissingCashItem = false
 local CASH_DRIFT_INTERVAL = 5000
 
+local function CashItemName()
+    local name = Config.CashItemName
+    if type(name) ~= 'string' or name == '' then name = 'cash' end
+    return name:lower()
+end
+
 local function NormalizeCashAmount(value)
     value = tonumber(value) or 0
     if value < 0 then value = 0 end
@@ -30,7 +36,7 @@ local function GetPlayerCashItemCount(Player)
     local items = Player and Player.PlayerData and Player.PlayerData.items or {}
 
     for _, item in pairs(items) do
-        if item and tostring(item.name):lower() == 'cash' then
+        if item and tostring(item.name):lower() == CashItemName() then
             total = total + NormalizeCashAmount(item.amount or item.count)
         end
     end
@@ -39,10 +45,10 @@ local function GetPlayerCashItemCount(Player)
 end
 
 local function CashItemExists()
-    local exists = QBCore.Shared and QBCore.Shared.Items and QBCore.Shared.Items['cash'] ~= nil
+    local exists = QBCore.Shared and QBCore.Shared.Items and QBCore.Shared.Items[CashItemName()] ~= nil
     if Config.CashAsItem and not exists and not warnedMissingCashItem then
         warnedMissingCashItem = true
-        print('^1[qb-inventory] CashAsItem is enabled, but qb-core/shared/items.lua has no `cash` item. Physical cash cannot be synchronized.^7')
+        print('^1[qb-inventory] CashAsItem is enabled, but qb-core/shared/items.lua has no configured cash item. Physical cash cannot be synchronized.^7')
     end
     return exists
 end
@@ -105,7 +111,7 @@ local function FindFirstFreeSlot(items)
 end
 
 local function BuildCashItem(slot, amount, existingInfo)
-    local itemInfo = QBCore.Shared.Items['cash']
+    local itemInfo = QBCore.Shared.Items[CashItemName()]
     return {
         name = itemInfo.name or 'cash',
         amount = NormalizeCashAmount(amount),
@@ -139,7 +145,7 @@ local function SetPhysicalCashTotal(source, target, reason)
     local cashSlots = {}
 
     for slot, item in pairs(items) do
-        if item and tostring(item.name):lower() == 'cash' then
+        if item and tostring(item.name):lower() == CashItemName() then
             cashSlots[#cashSlots + 1] = tonumber(slot) or tonumber(item.slot)
         end
     end
@@ -175,7 +181,7 @@ local function SetPhysicalCashTotal(source, target, reason)
 
     local delta = target - previous
     if delta ~= 0 then
-        TriggerClientEvent('qb-inventory:client:ItemBox', source, QBCore.Shared.Items['cash'], delta > 0 and 'add' or 'remove', math.abs(delta))
+        TriggerClientEvent('qb-inventory:client:ItemBox', source, QBCore.Shared.Items[CashItemName()], delta > 0 and 'add' or 'remove', math.abs(delta))
     end
 
     PushInventoryAndCash(source, Player, target)
@@ -215,6 +221,30 @@ function RSInventorySyncCashFromAccount(source, reason)
     if not source or not Config.CashAsItem then return false end
     if cashSyncBusy[source] then return true end
     if not CashItemExists() then return false end
+
+    -- Defer while the player has a live inventory move (SetInventoryData) or
+    -- drop-creation in flight -- see RSInventoryBusy in server/main.lua. This
+    -- function's only write path (SetPhysicalCashTotal, below) overwrites
+    -- Player.PlayerData.items directly, bypassing AddItem/RemoveItem and
+    -- whatever those functions guard. Nothing stopped it from running in the
+    -- middle of a drag-and-drop: a money-change event completely unrelated to
+    -- what the player is doing (a paycheck, a sale, anything, on its own
+    -- timer) can trigger this via QBCore:Server:OnMoneyChange, deferred one
+    -- tick by SetTimeout(0). If that lands mid-move, whichever write commits
+    -- last silently clobbers the other -- the mechanism behind an
+    -- intermittent cash-item duplication (or loss) from repeated drop/pickup.
+    --
+    -- Retry rather than skip: the mismatch this call exists to fix is real
+    -- and still needs correcting once the player's own move finishes. Each
+    -- retry re-reads the account fresh, so a busy wait never uses stale data.
+    if RSInventoryBusy and RSInventoryBusy[source] then
+        SetTimeout(200, function()
+            if QBCore.Functions.GetPlayer(source) then
+                RSInventorySyncCashFromAccount(source, reason)
+            end
+        end)
+        return true
+    end
 
     local Player = QBCore.Functions.GetPlayer(source)
     if not Player then return false end
