@@ -4,14 +4,35 @@ Config = {
     --         QBCore cash/HUD to that item count.
     -- FALSE = normal QBCore money handling.
     -- Requires qb-core/shared/items.lua to have a `cash` item.
-    CashAsItem = false,
+    --
+    -- THIS SERVER: true, matching the RS Punk build. Both builds are the same
+    -- brain and only differ in menu art, so this must not drift between them --
+    -- with it false, server/cash_sync.lua is entirely dormant (every entry point
+    -- early-returns on this flag) and any physical `cash` item a player already
+    -- holds becomes inert: qb-core stops reading it, and the item is
+    -- useable = false so they cannot convert it back themselves.
+    --
+    -- Verified present before enabling: the `cash` item in
+    -- qb-core/shared/items.lua, and the cash-as-item branches in
+    -- qb-core/server/player.lua (AddMoney / RemoveMoney / GetMoney).
+    CashAsItem = true,
+
+    -- Physical currency item used when CashAsItem is enabled. Keeping this in
+    -- one place prevents death/respawn preservation and the cash sync layer
+    -- from drifting onto different hard-coded names.
+    CashItemName = 'cash',
 
     -- Optional hook to hide a custom HUD while the inventory is open. Inventory
     -- calls exports[ResourceName]:ExportName(false/true) on open/close.
     -- Disabled by default because the named resource is server specific: set
     -- Enabled = true and point ResourceName/ExportName at your own HUD.
+    -- THIS SERVER: enabled, matching the RS Punk build. rs-lilhudlife is
+    -- installed and ensured here, and does export SetHUDLifeVisible
+    -- (client/main.lua:2322) -- verified, because pointing this at an export
+    -- that does not exist is a "No such export" error every time the inventory
+    -- opens. Ship it Enabled = false to anyone who does not run that HUD.
     CustomHUD = {
-        Enabled = false,
+        Enabled = true,
         ResourceName = 'rs-lilhudlife',
         ExportName = 'SetHUDLifeVisible'
     },
