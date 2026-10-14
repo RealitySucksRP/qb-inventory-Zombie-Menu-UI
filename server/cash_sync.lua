@@ -9,8 +9,10 @@
 
 local cashSyncBusy = {}
 local cashState = {}
+local cashStateRequestAt = {}
 local warnedMissingCashItem = false
 local CASH_DRIFT_INTERVAL = 5000
+local CASH_STATE_REQUEST_INTERVAL = 1000
 
 local function CashItemName()
     local name = Config.CashItemName
@@ -338,6 +340,12 @@ end)
 RegisterNetEvent('qb-inventory:server:requestCashState', function()
     local source = tonumber(source)
     if not source or not Config.CashAsItem then return end
+
+    local now = GetGameTimer()
+    local last = cashStateRequestAt[source]
+    if last and (now - last) < CASH_STATE_REQUEST_INTERVAL then return end
+    cashStateRequestAt[source] = now
+
     RSInventoryReconcileCashOnLoad(source, 'client-cash-state-request')
 end)
 
@@ -346,6 +354,7 @@ local function ClearCashState(playerOrSource)
     if source then
         cashSyncBusy[source] = nil
         cashState[source] = nil
+        cashStateRequestAt[source] = nil
     end
 end
 

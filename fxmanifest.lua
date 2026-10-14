@@ -2,9 +2,10 @@ fx_version 'cerulean'
 game 'gta5'
 author 'Reality Sucks RP / APCode'
 description 'Server-authoritative QBCore inventory with the RealitySucksRP zombie UI.'
-version '3.0.3-cash-death-guard'
+version '3.0.4-qb-production-guard'
 
 dependencies {
+'/onesync',
 'qb-core',
 'qb-weapons',
 'oxmysql',
@@ -54,7 +55,9 @@ files {
 'html/*.png',
 
 -- Item / inventory images. Kept explicit so FiveM does not pack non-image junk.
-'html/images/*.png'
+'html/images/*.png',
+'html/images/*.PNG',
+'html/images/*.webp'
 
 }
 
