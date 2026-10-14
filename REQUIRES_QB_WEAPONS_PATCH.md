@@ -33,21 +33,21 @@ Two resources describe the same attachment in two different formats:
 
 Stock `qb-weapons` compares those two with `==`. A string **never** equals a
 number in Lua, so the lookup always failed and detaching a shop-bought
-attachment did nothing at all — no error, no notification, no change.
+attachment did nothing at all - no error, no notification, no change.
 
 The fix is to normalize both sides to a hash before comparing.
 
 ---
 
-## Edit 1 of 3 — `qb-weapons/server/main.lua`
+## Edit 1 of 3 - `qb-weapons/server/main.lua`
 
 **Fixes:** detaching a shop-bought attachment does nothing.
 
 Near the top of the file, in the `-- Helpers --` section, FIND the
 `HasAttachment` function (usually around line 24). It appears in one of two
-forms depending on your qb-weapons version — **both have the same bug**:
+forms depending on your qb-weapons version - **both have the same bug**:
 
-**Form A — stock QBCore qb-weapons:**
+**Form A - stock QBCore qb-weapons:**
 
 ```lua
 local function HasAttachment(component, attachments)
@@ -60,7 +60,7 @@ local function HasAttachment(component, attachments)
 end
 ```
 
-**Form B — nil-safe variant used by some forks:**
+**Form B - nil-safe variant used by some forks:**
 
 ```lua
 local function HasAttachment(component, attachments)
@@ -106,7 +106,7 @@ end
 
 ---
 
-## Edit 2 of 3 — `qb-weapons/client/main.lua`
+## Edit 2 of 3 - `qb-weapons/client/main.lua`
 
 **Fixes:** shop-built weapons erroring / not showing attachments on equip.
 
@@ -141,13 +141,13 @@ REPLACE with:
 
 ---
 
-## Edit 3 of 3 — `qb-weapons/client/main.lua`
+## Edit 3 of 3 - `qb-weapons/client/main.lua`
 
 **Fixes:** attachment doesn't show on the gun until you re-equip it.
 
 `qb-weapons/server/main.lua` already fires `qb-weapons:client:applyComponentNow`
 and `qb-weapons:client:removeComponentNow` when an attachment item is used or
-toggled — but **no client handler for either event exists**, so both events go
+toggled - but **no client handler for either event exists**, so both events go
 nowhere. Add them.
 
 Paste this block into `qb-weapons/client/main.lua` immediately AFTER the
@@ -183,7 +183,7 @@ RegisterNetEvent('qb-weapons:client:removeComponentNow', function(weaponName, co
 end)
 ```
 
-> Placement is flexible — anywhere at file top level works. Do NOT paste it
+> Placement is flexible - anywhere at file top level works. Do NOT paste it
 > inside another function.
 
 ---
@@ -191,7 +191,7 @@ end)
 ## Install
 
 1. Back up `qb-weapons/server/main.lua` and `qb-weapons/client/main.lua`.
-2. Apply Edits 1–3 above.
+2. Apply Edits 1-3 above.
 3. Restart **both** resources:
 
 ```
@@ -212,15 +212,15 @@ For the first validation pass, prefer a **full server restart** over a live
 1. Buy a prebuilt weapon **with attachments** from the weapon shop.
 2. Open inventory, right-click the weapon, choose **Attachments**.
 3. Attachments appear with their real item images. *(This part works even
-   WITHOUT the qb-weapons edits — do not stop here.)*
+   WITHOUT the qb-weapons edits - do not stop here.)*
 4. **Click a filled slot.** The attachment must disappear from the panel AND the
    attachment item must land back in your inventory. **This is the part that only
    works once Edit 1 is applied.**
-5. Equip the weapon — the attachment is visible on the model.
-6. Use a standalone attachment item while holding a compatible weapon — it
+5. Equip the weapon - the attachment is visible on the model.
+6. Use a standalone attachment item while holding a compatible weapon - it
    should appear on the gun **instantly**, with no holster/re-draw. *(Edit 3.)*
 
-Console check — after clicking a filled slot, you should NOT see:
+Console check - after clicking a filled slot, you should NOT see:
 
 ```
 [qb-inventory] RemoveAttachment blocked: no component for ...
@@ -232,12 +232,12 @@ Console check — after clicking a filled slot, you should NOT see:
 
 - **Escrowed or encrypted `qb-weapons`:** if `server/main.lua` or
   `client/main.lua` is not editable, these edits cannot be applied and shop-built
-  attachments will remain non-detachable. There is no inventory-side workaround —
+  attachments will remain non-detachable. There is no inventory-side workaround  - 
   the comparison bug lives in `qb-weapons`.
 - **Heavily modified forks:** apply by function/event name rather than exact
   text match.
 - **Reapply after updating `qb-weapons`.** An update will overwrite these edits.
 - These edits are **backward compatible.** Attachments saved the old way (hash
-  numbers) keep working exactly as before — normalization accepts both formats.
+  numbers) keep working exactly as before - normalization accepts both formats.
 - Nothing here changes `qb-weapons/config.lua`, your `WeaponAttachments` table,
   weapon list, durability, tints, or repair logic.

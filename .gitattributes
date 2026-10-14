@@ -1,2 +1,7 @@
-# Auto detect text files and perform LF normalization
-* text=auto
+# Normalize all text to LF in the repository and on checkout.
+* text=auto eol=lf
+
+# Binary assets.
+*.png binary
+*.jpg binary
+*.woff2 binary

@@ -19,10 +19,10 @@ This is correct behavior for purchases, fines, shops, and other normal cash tran
 A live server trace identified this exact conflict:
 
 ```text
-\[qb-core]\[death-cash-guard] BLOCKED cash removal while dead | src=1 amount=1000 reason=zombie-death-loss invoking=RealitySucks\_ZombieHubs
+[qb-inventory][death-cash-guard] BLOCKED cash removal while dead | src=1 amount=1000 reason=zombie-death-loss invoking=RealitySucks_ZombieHubs
 ```
 
-The caller was `RealitySucks\_ZombieHubs`, using the reason `zombie-death-loss`.
+The caller was `RealitySucks_ZombieHubs`, using the reason `zombie-death-loss`.
 
 This proves the loss was not caused by `rs-lilhudlife`, `qb-inventory`, or `qb-ambulancejob`. A separate gameplay resource intentionally requested a cash deduction at death, and cash-as-item synchronization would have correctly converted that request into physical inventory removal.
 
@@ -62,12 +62,12 @@ A match is not automatically a bug. It means the resource must be reviewed to de
 Keep this enabled in `server.cfg`:
 
 ```cfg
-set qb\_protect\_cash\_while\_dead 1
+set qb_protect_cash_while_dead 1
 ```
 
 This is the recommended default for this package.
 
-Death/downed cash-removal attempts are rejected at both QBCore and qb-inventory authority layers.
+With the documented qb-core cash-as-item patch, QBCore cash removal delegates into qb-inventory, where `RemoveCash`/`RemoveItem(cash)` enforce the death/downed guard before physical cash is removed.
 
 ### If a resource has an optional death-money penalty
 
@@ -80,7 +80,7 @@ Do not assume a "cash" penalty is harmless framework metadata. With Cash-As-Item
 Only then disable the protection knowingly:
 
 ```cfg
-set qb\_protect\_cash\_while\_dead 0
+set qb_protect_cash_while_dead 0
 ```
 
 Doing this allows any trusted server resource using normal QBCore/qb-inventory cash removal paths to take physical cash while the player is dead/downed.
@@ -128,7 +128,7 @@ If the HUD and inventory both change together, that usually means the underlying
 Keep tracing enabled while integrating new death/zombie/medical resources:
 
 ```cfg
-set qb\_death\_cash\_trace 1
+set qb_death_cash_trace 1
 ```
 
 A blocked attempt prints:
@@ -142,7 +142,7 @@ A blocked attempt prints:
 Example:
 
 ```text
-\[qb-core]\[death-cash-guard] BLOCKED cash removal while dead | src=1 amount=1000 reason=zombie-death-loss invoking=RealitySucks\_ZombieHubs
+[qb-inventory][death-cash-guard] BLOCKED cash removal while dead | src=1 amount=1000 reason=zombie-death-loss invoking=RealitySucks_ZombieHubs
 ```
 
 That line is the first place to look when a server owner reports that cash disappears at death.

@@ -1,315 +1,266 @@
-<p align="center">
-  <img src="images/zombie.png" alt="RS Zombie Inventory Preview" width="100%">
-</p>
+# RS Zombie Inventory
 
-<p align="center">
-  <a href="https://reality-sucks-rp-webstore.tebex.io/package/7506318"><img src="https://img.shields.io/badge/GET%20IT%20FREE-TEBEX-ff6a00?style=for-the-badge" alt="Get RS Zombie Inventory on Tebex"></a>
-  <a href="https://reality-sucks-rp-webstore.tebex.io/category/zombie-core"><img src="https://img.shields.io/badge/EXPLORE-ZOMBIE%20CORE-1f6f43?style=for-the-badge" alt="Explore the RealitySucksRP ZombieCore ecosystem"></a>
-  <a href="https://realitysucksrp.github.io/"><img src="https://img.shields.io/badge/VISIT-WEBSITE-0f6fff?style=for-the-badge" alt="Visit RealitySucksRP website"></a>
-  <a href="https://reality-sucks-rp-webstore.tebex.io/"><img src="https://img.shields.io/badge/BROWSE-FULL%20STORE-111111?style=for-the-badge" alt="Browse RealitySucksRP Tebex Store"></a>
-</p>
+<a href="https://reality-sucks-rp-webstore.tebex.io/package/7506318"><img src="docs/screenshots/preview-1.webp" width="900" alt="RS Zombie Inventory"></a>
 
-> I build my own FiveM scripts and complete server setups: zombie apocalypse systems, shops, weapons, phones, racing, customs, garages, dealerships, warfare, Phantom encounters, UI and more. My resources are tested in my own server builds and can be configured around the server owner's setup.
+Build your inventory around the apocalypse. This QBCore edition brings zombie artwork and survival presentation together with physical cash, ground loot, weapon attachments, vehicle storage and item transfers. Customize the menu to match your survivor world.
 
-# 🧟 RealitySucksRP Zombie Inventory
+[Download the original ZIP](https://github.com/RealitySucksRP/qb-inventory-Zombie-Menu-UI/releases/latest/download/qb-inventory-zombie.zip) | [Free on Tebex](https://reality-sucks-rp-webstore.tebex.io/package/7506318) | [Watch preview](https://youtu.be/HrOj98U_89w?si=DWQiC69TE38P6d6D) | [Website](https://realitysucksrp.github.io/) | [Discord](https://discord.gg/e9V3rPHySx) | [YouTube](https://www.youtube.com/@RealitySucksRP) | [All free scripts](https://reality-sucks-rp-webstore.tebex.io/category/free-scripts)
 
-### Open Source QB Inventory Rework
+**Install folder:** `qb-inventory`. Download the original ZIP to retain the package folder layout. Source, configuration, licenses and included assets are provided below.
 
-**Bring your FiveM inventory into the apocalypse.**
+<details>
+<summary>More screenshots</summary>
 
-FULLY customizable — change menu images, move them around and make it your own.
+<img src="docs/screenshots/preview-2.webp" width="480" alt="RS Zombie Inventory screenshot 2">
 
-**RealitySucksRP Zombie Inventory** is an open-source custom UI version of `qb-inventory` built for zombie, survival, post-apocalyptic, and dark RP servers. It keeps the familiar QB Inventory / APCode rework-style behavior while replacing the default look with a custom zombie-themed interface made to match the RealitySucksRP style.
+</details>
 
-This inventory was designed to pair perfectly with zombie servers, especially `rs-zombiecore`, but it does **not** require `rs-zombiecore` to run.
+## Package documentation
 
-The goal is simple: keep the inventory working like players expect, but make it actually feel like it belongs in a zombie outbreak server.
+# qb-inventory
 
-## ☣️ What Makes This Different?
+> A reworked, hardened inventory for the QBCore framework, with the
+> RealitySucksRP zombie UI. Cash as an item, weapon attachments, floor drops,
+> player searching, and a server-authoritative backend.
 
-This is not just a basic color edit.
-
-This version includes a full Zombie UI skin with custom menu artwork, darker glass panels, clearer slot layout, right-click options, attachment inspection, drop support, cash-as-item support, and HUD cash sync configuration.
-
-The backend stays familiar. The look feels completely different.
-
-## 🚀 Main Features
-
-- 🔓 Open-source release
-- 🧟 Custom RealitySucksRP Zombie UI
-- ☣️ Dark survival / outbreak-style inventory design
-- 🖱️ Right-click menu support
-- 🎒 Use, Give, Drop, Split, Copy Serial, and Attachments options
-- 🔫 Weapon attachment inspection panel
-- 🔧 Remove weapon attachments from the inspection menu
-- 📦 Ground item drops
-- ✅ Drop confirmation window
-- 🚗 Vehicle trunk and glovebox support
-- 🗄️ Stash support
-- 🛒 Shop support
-- 🔢 Weapon serial support
-- 🛡️ Item durability display
-- 🔥 Hotbar support
-- 💵 Cash-as-item support
-- 💰 HUD money sync configuration
-- 🩸 Marked / black-money item support
-- ⏳ Item freshness / expiration support
-- 🎨 Editable CSS
-- 🖼️ Editable UI images
-- 🖼️ Editable item images
-- 🛡️ Server-authoritative reconciliation
-- 🔒 Duplicate-request protection
-- ↩️ Floor-drop recovery
-- 🔄 Automatic cash-state correction
-- 🔓 No escrow protection
-- 📂 No `/assetpacks` dependency
-- 🧩 Optional `rs-zombiecore` integration
-
-## 🧟 Zombie UI
-
-The menu includes custom zombie-themed visual layers and artwork such as:
-
-- Zombie head art
-- Skeleton art
-- Dark background panels
-- Survival-style menu feel
-- Clearer item text
-- Sharper slot numbers
-- Better item readability
-
-This makes it a strong fit for:
-
-- Zombie RP servers
-- Apocalypse servers
-- Survival servers
-- Dark RP servers
-- Hardcore economy servers
-- Custom QBCore servers
-
-## 🎒 A Real Survival Inventory
-
-Items can be moved, stored, dropped, recovered, traded, and managed through an interface designed around survival gameplay.
-
-The Zombie edition preserves its dedicated apocalypse presentation while using server-authoritative synchronization underneath.
-
-That is especially important in survival servers where one duplicated weapon, cash stack, or valuable item can damage an entire economy.
-
-## 💵 Physical Cash & Black-Market Economy Support
-
-The inventory supports physical cash while keeping it synchronized with the player’s actual server-side buying power.
-
-Cash added through normal framework money functions can appear as a real item inside the inventory while remaining usable by shops and other resources.
-
-If the player has:
-
-**$34,601,900**
-
-the inventory can display:
-
-**$34,601,900**
-
-instead of treating the money like a generic stack with an `x` count.
-
-The synchronization system is designed to keep:
-
-**Physical Cash → HUD Cash → Framework Cash → Purchasing Power**
-
-aligned.
-
-The Zombie edition also preserves support for marked-money and black-money style inventory items for underground and apocalypse economies.
-
-## 🛡️ Hardened Ground Loot
-
-Ground loot has been rebuilt around authoritative server state.
-
-When a survivor drops an item, the server determines the real result and sends the finished player inventory and ground inventory back to the interface.
-
-This helps prevent:
-
-- Duplicate floor loot
-- Ghost weapons
-- Cash appearing in two locations
-- Items disappearing until inventory is reopened
-- Rapid-drop duplication attempts
-- Failed bags permanently consuming items
-- Stale inventory displays
-- Rejected moves remaining visible locally
-
-If a floor bag cannot be created correctly after an item is removed, the inventory includes recovery logic designed to return that item rather than silently destroying it.
-
-## 🔫 Weapon Interaction
-
-The inventory supports weapon metadata and attachment inspection.
-
-Right-click actions can include:
-
-- Use
-- Give
-- Drop
-- Split
-- Copy Serial
-- Attachments
-
-Attachment categories can include:
-
-- 🔦 Flashlight
-- 🎯 Optics
-- 🔧 Grip
-- 🔫 Muzzle
-- 📦 Magazine
-- 🎨 Tint / skin
-
-## 🥩 Built for Survival Systems
-
-The Zombie edition preserves additional systems intended for a more advanced apocalypse environment, including:
-
-- Zombie/apocalypse inventory presentation
-- Physical cash
-- Marked and black-money item support
-- Weapon inventory support
-- Weapon attachment compatibility
-- Item freshness and expiration support
-- Ground loot
-- Drop quantity confirmation
-- Player-to-player transfers
-- Gloveboxes and vehicle inventory
-- Weight and slot management
-- Hotbar support
-- HUD cash integration
-- AP-style backend compatibility
-- Incident/robbery integration support
-- Authoritative inventory reconciliation
-- Duplicate-request protection
-- Floor-drop recovery
-- Automatic cash-state correction
-
-## 🎨 Fully Customizable
-
-Server owners can modify the menu presentation without rebuilding the inventory logic.
-
-Editable areas include:
-
-```text
-html/main.css
-html/index.html
-html/images/
-```
-
-You can replace:
-
-- Zombie art
-- Skeleton art
-- Server logos
-- Background imagery
-- Item images
-- Branding
-- Menu colors
-- Image positions
-- Image sizes
-
-## 🧩 HUD Money Sync
-
-This inventory includes cash-as-item support.
-
-The included HUD config is only an example. It does not require the RealitySucksRP HUD.
-
-Server owners can add their own HUD resource name and cash update event inside the config.
-
-```lua
-CustomHUD = {
-    Enabled = true,
-    ResourceName = 'my-hud',
-    ExportName = nil,
-    MoneySyncEvents = {
-        'my-hud:client:updateCash'
-    }
-}
-```
-
-If you do not use a custom HUD sync event, leave this disabled.
-
-## 📦 Dependencies
-
-Required:
-
-- `qb-core`
-- `qb-weapons`
-- `oxmysql`
-
-Recommended:
-
-- A QBCore-compatible HUD
-- A QBCore-compatible banking system
-- Item images inside `html/images/`
-
-Optional:
-
-- `rs-zombiecore` for a full zombie survival server experience
-
-## 🛠️ Installation
-
-1. Back up your existing inventory and player data.
-2. Place the resource inside your server resources folder.
-3. Make sure the folder is named `qb-inventory`.
-4. Make sure `qb-core`, `qb-weapons`, and `oxmysql` start before it:
-
-```cfg
-ensure qb-core
-ensure qb-weapons
-ensure oxmysql
-ensure qb-inventory
-```
-
-5. Configure cash, HUD sync, and inventory settings in `config/config.lua`.
-6. Restart your server.
-
-## ⚠️ Important Notes
-
-This is an open-source release.
-
-There is no escrow protection.
-
-There is no `/assetpacks` dependency.
-
-All Lua, HTML, CSS, JavaScript, config files, and UI images are editable subject to the applicable upstream license.
-
-Server owners are responsible for setting their own HUD event if they want the inventory cash item to match their custom HUD money display.
-
-The included HUD config is an example only.
-
-## Complete FiveM Servers For Sale
-
-I love making scripts and running wild in GTA, but I also enjoy building complete servers. I use tested RealitySucksRP systems and configure the build around the owner's gameplay, framework, economy, theme and direction.
-
-- **QBCore Shell — $500**
-- **Zombie Server — $700**
-- **Full RP Server — $850**
-- **30 days of Discord setup/support included**
-
-**Website:** https://realitysucksrp.github.io/
-
-**Tebex:** https://reality-sucks-rp-webstore.tebex.io/
-
-**Discord:** https://discord.gg/e9V3rPHySx
-
-## ❤️ Credits
-
-Original QB Inventory by the QBCore Framework team.
-
-Rework/APCode backend behavior by APCode.
-
-Zombie UI, RealitySucksRP styling, synchronization hardening, polish, and release packaging by **RealitySucksRP**.
-
-## 📜 License
-
-This resource follows the original QB Inventory open-source license requirements.
-
-Because this is based on QB Inventory, it remains open source.
-
-You may edit, modify, and redistribute this resource under the same open-source license requirements.
+![version](https://img.shields.io/badge/version-3.0.4--qb--production--guard-brightgreen)
+![framework](https://img.shields.io/badge/framework-QBCore-blue)
+![lua](https://img.shields.io/badge/lua-5.4-000080)
+![license](https://img.shields.io/badge/license-GPL--3.0-orange)
 
 ---
 
-# 🧟 RS Zombie Inventory
+## Preview
 
-**Loot it. Carry it. Trade it. Drop it. Survive with it.**
+A two-panel layout with a five-column survival grid, framed by the zombie
+artwork. Item art, weight, durability, decay and stack counts all render in the
+slot. Right-clicking a weapon opens the attachment inspection panel.
+
+The whole menu is themeable from a handful of CSS variables. See
+[docs/ui-customization.md](docs/ui-customization.md).
+
+---
+
+## Features
+
+- **Cash as an item.** Physical `cash` in the grid stays synchronized with
+  QBCore buying power in both directions, with drift reconciliation and a
+  `/cashcheck` command.
+- **Weapon attachment panel.** Reads attachments saved by weapon shops in any of
+  the common metadata formats, including prebuilt shop weapons. Nothing
+  installed on a gun is ever invisible.
+- **Floor drops.** Server-authoritative bags you can open, carry and set down,
+  with idempotent drop handling and automatic refunds when bag creation fails.
+- **Player searching.** Search dead or hands-up players through a server-issued
+  robbery handshake.
+- **Decay system** for food and drink, with expiry-aware stacking that can never
+  extend an item's life.
+- **Trunks, gloveboxes, stashes and shops** use server-owned sessions,
+  routing-bucket checks and live proximity revalidation. Vending uses the same
+  shop session layer plus network-entity verification where the prop is
+  networked; optional strict coordinates are available for full server-side
+  vending location authority.
+- **Server-authoritative throughout.** Every item move is checked against what
+  the server believes the player has open, and distance is revalidated on every
+  move. See [Security](#security).
+
+---
+
+## Dependencies
+
+| Resource | Required | Notes |
+|---|---|---|
+| [qb-core](https://github.com/qbcore-framework/qb-core) | yes | |
+| [oxmysql](https://github.com/overextended/oxmysql) | yes | |
+| [qb-target](https://github.com/qbcore-framework/qb-target) | yes | drops, vending, player search |
+| [qb-weapons](https://github.com/qbcore-framework/qb-weapons) | yes | needs three small edits, see below |
+| OneSync / state awareness | yes | required by the manifest for server entity, network-id and routing-bucket validation |
+
+---
+
+## Installation
+
+**1. Install the resource**
+
+Remove your existing `qb-inventory` and drop this folder in its place. The
+folder must stay named `qb-inventory`, since other resources reference it by
+name. Confirm OneSync/state awareness is enabled and dependencies start before the inventory:
+
+```cfg
+ensure qb-core
+ensure oxmysql
+ensure qb-target
+ensure qb-weapons
+ensure qb-inventory
+```
+
+The manifest declares the Cfx `/onesync` runtime constraint, so the resource
+will not silently start without state awareness.
+
+**2. Import the SQL**
+
+```bash
+mysql -u USER -p DATABASE < qb-inventory.sql
+```
+
+If you are upgrading an existing install, run `migrate.sql` instead.
+
+**3. Patch qb-weapons**
+
+Three small edits are required in the separate `qb-weapons` resource, or
+detaching a shop-bought attachment silently does nothing. Full instructions with
+copy-paste blocks are in
+[REQUIRES_QB_WEAPONS_PATCH.md](REQUIRES_QB_WEAPONS_PATCH.md).
+
+**4. Patch qb-core, if you want cash as an item**
+
+This RealitySucksRP server build currently ships with `Config.CashAsItem = true`.
+That mode requires the matching money-function edits in `qb-core/server/player.lua`
+and a `cash` item in `qb-core/shared/items.lua`. Full instructions are in
+[docs/qb-core-cash-as-item.md](docs/qb-core-cash-as-item.md).
+
+Set `Config.CashAsItem = false` to use normal QBCore cash instead; the physical
+cash synchronization/death-guard paths then remain dormant.
+
+**5. Add your item images**
+
+The resource includes a legacy item-image collection plus `missing.png` as a
+fallback. Replace or remove any art you do not have redistribution rights for.
+Custom item images go in `html/images/` as `<itemname>.png`; on Linux hosts the
+filename is case-sensitive and must match the item definition exactly.
+
+---
+
+## Configuration
+
+Everything lives in `config/config.lua`.
+
+| Setting | Default | What it does |
+|---|---|---|
+| `CashAsItem` | `true` in this RS server build | Physical `cash` item synchronized with QBCore cash. Requires the documented qb-core patch; set false for normal QBCore money. |
+| `CustomHUD` | enabled for `rs-lilhudlife` in this build | Hook to hide a custom HUD while inventory is open. Disable or repoint it on servers without that export. |
+| `RobberyWebhook` | `''` | Discord webhook for player robbery logs. Empty disables logging. |
+| `MaxWeight` / `MaxSlots` | `120000` / `40` | Player capacity. 40 slots suits the five-column layout. |
+| `StackWithDifferentExpiry` | `true` | Stack non-unique items by name even when freshness differs. Merged stacks keep the earlier expiry. |
+| `StashSize` / `DropSize` | | Capacity for stashes and floor drops. |
+| `DropAccessDistance` | `3.5` | How far a player may stray from a drop before moves stop being honoured. |
+| `PlayerAccessDistance` | `3.5` | Same, for another player's inventory during a search. |
+| `ShopAccessDistance` | `6.0` | Same, for shops. |
+| `StashAccessDistance` | `8.0` | Generic stash session radius from the trusted server-open position. |
+| `VehicleAccessDistance` | `5.0` | Maximum live trunk distance; gloveboxes require being in the same verified vehicle. |
+| `UseItemRateLimitMs` | `450` | Server-side item-use anti-spam interval. |
+| `StashSaveDelayMs` | `500` | Debounce before dirty cached inventories are persisted. |
+| `CleanupDropTime` | `15` | Minutes before an untouched, unopened, uncarried floor drop is cleaned up. |
+| `VendingStrictLocations` | `false` | Require vending opens to match configured server-authoritative coordinates. |
+| `VendingItems` | | Stock sold by vending machines. |
+
+Vehicle trunk and glovebox capacity is per class and per model in
+`config/vehicles.lua`.
+
+---
+
+## Security
+
+This resource is server-authoritative. Item moves are validated against a
+server-side record of what each player actually has open, and re-checked for
+distance on every single move, so opening something legitimately and then
+walking away does not keep access.
+
+Two legacy QBCore bridges are deliberately closed to clients:
+
+- `QBCore:Server:AddItem` / `QBCore:Server:RemoveItem`
+- `inventory:server:OpenInventory`
+
+These are net events, so any client could otherwise trigger them with arbitrary
+arguments. Server-side callers are unaffected. If a resource of yours needs to
+grant, take, or open something, call the exports instead:
+
+```lua
+exports['qb-inventory']:AddItem(source, item, amount, slot, info, reason)
+exports['qb-inventory']:RemoveItem(source, item, amount, slot, reason)
+exports['qb-inventory']:OpenInventory(source, identifier, data)
+```
+
+Blocked attempts are printed to the console and sent to `qb-log` under the
+`anticheat` category, so a resource that breaks after upgrading will tell you
+exactly which event it was using.
+
+Additional production guards in 3.0.4 include routing-bucket checks for player,
+drop, shop and vehicle access; the exact vehicle network id/plate is carried in
+the session and revalidated on every move; a server-only target lock prevents
+two-robber races without trusting replicated `inv_busy`; and a lightweight
+watchdog closes live sessions when their distance/entity/bucket authorization is
+lost even if no further item move is attempted. Dead/last-stand/handcuffed
+players cannot continue mutation operations, carried drops are server-tracked,
+robbery completion has a server-enforced minimum duration and a final
+victim-state check, shop purchases share the inventory mutation mutex, and dirty
+stash/trunk/glovebox data is saved shortly after mutation rather than waiting
+only for UI close. Dynamic tooltip fields are HTML-escaped before they reach the
+NUI's HTML tooltip renderer.
+
+### Vending trust boundary
+
+`qb-target:AddTargetModel` can target static GTA map props that do not always
+exist as a server-verifiable network entity. In the default
+`VendingStrictLocations = false` mode, qb-inventory validates the allowed model,
+player-to-interaction distance, routing bucket, and the actual network entity
+when one exists, but a malicious client can still fabricate the existence of a
+non-networked static prop near itself. If you require executor-resistant vending
+location authority, set `VendingStrictLocations = true` and populate
+`VendingLocations` with the vending positions used by your server. This keeps
+normal base-map vending compatible by default without pretending that a
+client-only map object is cryptographically server-proven.
+
+### Vehicle lock-state boundary
+
+The server proves the exact networked vehicle, plate, routing bucket and
+distance for trunk/glovebox sessions and revalidates that identity throughout
+the session. GTA's door-lock status native used by the normal open path is a
+client native, however. This focused QBCore build does not add a new
+qb-vehiclekeys/keys dependency just to duplicate that check. Treat the client
+door-lock check as an interaction/UX boundary; the inventory server never
+accepts a forged plate, remote vehicle, wrong routing bucket or changed vehicle.
+
+### Floor-drop restart boundary
+
+Floor drops are runtime world state, not database records. They are cleaned when
+`qb-inventory` stops so a resource restart cannot leave orphan visual bags. This
+audit deliberately does not expand scope by inventing persistent world-drop
+storage.
+
+If you have a legacy resource you cannot fix immediately, there are two escape
+hatches at the top of `server/compat.lua`. Both re-open real duplication holes
+for as long as they are enabled, and both are off by default.
+
+---
+
+## Commands
+
+| Command | Permission | Description |
+|---|---|---|
+| `/giveitem [id] [item] [amount]` | `admin` | Give an item to a player. |
+| `/clearinv [id]` | `admin` | Clear a player's inventory, or your own with no id. |
+| `/randomitems` | `god` | Fill your inventory with ten random non-weapon items. |
+| `/cashcheck` | `user` | Compare physical cash against QBCore cash. |
+
+---
+
+## Credits
+
+Built on the QBCore inventory and the APCode `qb-inventory-rework` backend, with
+the RealitySucksRP zombie UI. Thanks to the QBCore community, and to the
+Anya-project qb-inventory rework for patches and updates.
+
+---
+
+## License
+
+GPL-3.0. See [LICENSE](LICENSE). Third-party browser libraries and fonts are
+documented in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+Item artwork in `html/images/` is not relicensed by this project. Presence of an
+image in the folder is not proof of commercial redistribution rights; publishers
+should replace or remove any artwork whose provenance they cannot verify.
+
+
+[Earlier repository documentation and all existing links](PREVIOUS_README.md)
